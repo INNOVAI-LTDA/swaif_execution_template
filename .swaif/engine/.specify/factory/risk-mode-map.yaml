@@ -1,0 +1,43 @@
+# Owner: Risk & Compliance Committee
+# Expected inputs: change criticality, data sensitivity, external exposure, operational blast radius.
+# Purpose: Maps contextual risk indicators to default SWAIF risk modes and control depth.
+
+version: 1
+modes:
+  low:
+    criteria:
+      - internal_only_change
+      - no_sensitive_data
+      - low_blast_radius
+    required_controls:
+      - basic_tests
+      - standard_code_review
+  moderate:
+    criteria:
+      - user_visible_change
+      - limited_sensitive_data
+      - moderate_blast_radius
+    required_controls:
+      - extended_tests
+      - architecture_review
+      - security_review
+  high:
+    criteria:
+      - critical_path_change
+      - regulated_or_sensitive_data
+      - high_blast_radius
+    required_controls:
+      - threat_model
+      - enhanced_observability_checks
+      - staged_rollout
+      - explicit_risk_signoff
+  critical:
+    criteria:
+      - safety_or_compliance_critical
+      - cross_system_failure_potential
+      - severe_blast_radius
+    required_controls:
+      - independent_validation
+      - executive_signoff
+      - rollback_drill
+      - continuous_war_room_monitoring

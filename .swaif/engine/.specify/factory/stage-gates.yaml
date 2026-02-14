@@ -1,0 +1,34 @@
+# Owner: Governance + Engineering Leadership
+# Expected inputs: artifact paths (constitution/spec/plan/tasks), current lifecycle stage, approver roster.
+# Purpose: Defines required stage gates and minimum evidence before promotion.
+
+version: 1
+stages:
+  - id: constitution
+    required_artifacts:
+      - templates/swaif-constitution.md
+    gate_checks:
+      - charter_approved
+      - governance_bodies_defined
+  - id: specification
+    required_artifacts:
+      - templates/swaif-spec-template.md
+    gate_checks:
+      - constitutional_checklist_completed
+      - nfrs_defined
+      - risk_assessment_recorded
+      - approvals_captured
+  - id: planning
+    required_artifacts:
+      - templates/swaif-plan-template.md
+    gate_checks:
+      - phase_minus_one_gates_passed
+      - architecture_data_api_plan_present
+      - observability_security_plan_present
+  - id: execution
+    required_artifacts:
+      - templates/swaif-tasks-template.md
+    gate_checks:
+      - dependencies_mapped
+      - traceability_matrix_completed
+      - execution_mode_declared

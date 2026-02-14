@@ -1,0 +1,29 @@
+# Owner: Developer Experience / Platform Engineering
+# Expected inputs: repository layout, CI providers, branch policy, notification channels.
+# Purpose: Provides default automation behavior for SWAIF artifact generation and gate checks.
+
+version: 1
+defaults:
+  artifact_paths:
+    constitution: templates/swaif-constitution.md
+    spec: templates/swaif-spec-template.md
+    plan: templates/swaif-plan-template.md
+    tasks: templates/swaif-tasks-template.md
+    memory_dir: .specify/memory
+  workflow:
+    enforce_stage_order: true
+    require_gate_checks: true
+    auto_link_traceability: true
+  approvals:
+    require_named_approvers: true
+    minimum_signoffs:
+      low: 1
+      moderate: 2
+      high: 3
+      critical: 3
+  notifications:
+    on_gate_failure: true
+    on_risk_mode_high_or_above: true
+    channels:
+      - engineering-alerts
+      - risk-review
