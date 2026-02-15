@@ -1,0 +1,36 @@
+name: SWAIF Feature
+about: Factory Input Package for stage-gated SWAIF execution
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Submit a SWAIF Factory Input Package. Required headings are parsed by automation.
+  - type: input
+    id: feature_slug
+    attributes:
+      label: Feature Slug
+      description: Use kebab-case. Example: 001-clinic-billing
+      placeholder: 001-example-feature
+    validations:
+      required: true
+  - type: dropdown
+    id: declared_execution_type
+    attributes:
+      label: Declared Execution Type
+      options:
+        - Hands-On Run
+        - Research Experiment
+        - Prototype
+        - PoC
+        - MVP
+        - Scaled Product
+    validations:
+      required: true
+  - type: textarea
+    id: fip
+    attributes:
+      label: Factory Input Package
+      description: Provide business context, constraints, acceptance criteria, and non-goals.
+    validations:
+      required: true
