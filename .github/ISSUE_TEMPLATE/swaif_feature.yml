@@ -1,0 +1,64 @@
+name: SWAIF Feature (Factory Unit)
+description: One issue = one feature (SpecKit folder under specs/).
+title: "[SWAIF] <feature>"
+labels: ["swaif:queued"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is one SWAIF factory unit. Move the card in GitHub Projects to advance stages.
+
+        Required keys must appear exactly, because the worker parses them.
+
+  - type: input
+    id: feature_slug
+    attributes:
+      label: Feature Slug (SpecKit folder)
+      description: "Example: 001-clinic-finance-automation"
+      placeholder: "001-clinic-finance-automation"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: exec_type
+    attributes:
+      label: Declared Execution Type
+      description: "Chosen by the human interviewer. The FIP agent validates sufficiency."
+      options:
+        - Hands-On
+        - Prototype
+        - PoC
+        - MVP
+        - Research
+        - Scaled Product
+    validations:
+      required: true
+
+  - type: textarea
+    id: interview
+    attributes:
+      label: Interview Source (sanitized)
+      description: "Paste transcript/form/report text (sanitized). No PHI/PII."
+      placeholder: "Paste the interview material here"
+    validations:
+      required: true
+
+  - type: textarea
+    id: fip
+    attributes:
+      label: Factory Input Package (FIP)
+      description: "If you already produced a FIP, paste it here. Otherwise leave empty and trigger the FIP Agent manually via Copilot."
+      placeholder: "Optional"
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        DO NOT EDIT BELOW (parser stability)
+
+  - type: markdown
+    attributes:
+      value: |
+        Feature Slug: {{feature_slug}}
+        Declared Execution Type: {{exec_type}}
