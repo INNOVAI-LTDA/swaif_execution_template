@@ -1,0 +1,3 @@
+UNPINNED
+
+Pin this engine snapshot to the Docs Source of Truth (SoT) by replacing this value with an immutable tag or commit SHA from the Docs repository.

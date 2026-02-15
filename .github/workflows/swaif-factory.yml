@@ -1,0 +1,195 @@
+name: SWAIF Factory
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: SWAIF stage to run
+        required: true
+        type: choice
+        options:
+          - specify
+          - plan
+          - tasks
+          - implement
+          - verify
+      feature_slug:
+        description: Feature slug (kebab-case)
+        required: true
+        type: string
+      declared_execution_type:
+        description: Declared Execution Type
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: swaif-factory-${{ github.event_name }}-${{ github.event.issue.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-stage:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issues' &&
+      (github.event.label.name == 'swaif:specify' ||
+       github.event.label.name == 'swaif:plan' ||
+       github.event.label.name == 'swaif:tasks' ||
+       github.event.label.name == 'swaif:implement' ||
+       github.event.label.name == 'swaif:verify'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve stage and metadata
+        id: meta
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const eventName = context.eventName;
+            let stage = '';
+            let featureSlug = '';
+            let executionType = '';
+            let issueNumber = '';
+            const allowedStages = new Set(['specify', 'plan', 'tasks', 'implement', 'verify']);
+
+            if (eventName === 'workflow_dispatch') {
+              stage = core.getInput('stage').trim();
+              featureSlug = core.getInput('feature_slug').trim();
+              executionType = core.getInput('declared_execution_type').trim();
+              issueNumber = '0';
+            } else {
+              const issue = context.payload.issue;
+              issueNumber = String(issue.number);
+              const label = context.payload.label?.name || '';
+              stage = label.replace('swaif:', '').trim();
+
+              const body = issue.body || '';
+              const readHeading = (heading) => {
+                const pattern = new RegExp(`^### ${heading}\\s*$\\n([\\s\\S]*?)(?=^### |$)`, 'm');
+                const match = body.match(pattern);
+                if (!match) return '';
+                const value = match[1]
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .find((line) => line.length > 0 && line !== '_No response_');
+                return value || '';
+              };
+
+              featureSlug = readHeading('Feature Slug');
+              executionType = readHeading('Declared Execution Type');
+
+              if (!featureSlug || !executionType) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: [
+                    'Missing required metadata for SWAIF automation.',
+                    '',
+                    'Please edit the issue body and provide values directly under:',
+                    '- `### Feature Slug`',
+                    '- `### Declared Execution Type`',
+                    '',
+                    'Then re-apply one stage label: `swaif:specify`, `swaif:plan`, `swaif:tasks`, `swaif:implement`, or `swaif:verify`.'
+                  ].join('\n')
+                });
+                core.setFailed('Issue metadata missing.');
+                return;
+              }
+            }
+
+            if (!allowedStages.has(stage)) {
+              core.setFailed(`Invalid stage '${stage}'. Must be exactly one of: specify, plan, tasks, implement, verify.`);
+              return;
+            }
+
+            if (!/^[a-z0-9][a-z0-9-]*$/.test(featureSlug)) {
+              core.setFailed(`Invalid feature_slug '${featureSlug}'. Expected kebab-case.`);
+              return;
+            }
+
+            core.setOutput('stage', stage);
+            core.setOutput('feature_slug', featureSlug);
+            core.setOutput('execution_type', executionType);
+            core.setOutput('issue_number', issueNumber);
+
+      - name: Run one SWAIF stage
+        run: |
+          ./scripts/swaif_stage.sh \
+            "${{ steps.meta.outputs.stage }}" \
+            "specs/${{ steps.meta.outputs.feature_slug }}" \
+            "${{ steps.meta.outputs.execution_type }}" \
+            "${{ steps.meta.outputs.issue_number }}"
+
+      - name: Create or update PR
+        uses: actions/github-script@v7
+        env:
+          FEATURE_SLUG: ${{ steps.meta.outputs.feature_slug }}
+          STAGE: ${{ steps.meta.outputs.stage }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const head = `${owner}:swaif/${process.env.FEATURE_SLUG}`;
+            const base = 'main';
+            const title = `SWAIF ${process.env.STAGE}: ${process.env.FEATURE_SLUG}`;
+            const body = [
+              'Automated SWAIF stage execution.',
+              '',
+              `- Stage: \\`${process.env.STAGE}\\``,
+              `- Feature: \\`${process.env.FEATURE_SLUG}\\``,
+              '',
+              'SWAIF is a Spec-Driven Software Factory where production is stage-gated (no vibe coding), traceable, and driven by a Kanban state machine—each Kanban move runs exactly one factory step, and failures block until fixed.'
+            ].join('\n');
+
+            const prs = await github.rest.pulls.list({ owner, repo, state: 'open', head, base });
+            if (prs.data.length > 0) {
+              await github.rest.pulls.update({
+                owner,
+                repo,
+                pull_number: prs.data[0].number,
+                title,
+                body
+              });
+            } else {
+              await github.rest.pulls.create({ owner, repo, head, base, title, body });
+            }
+
+      - name: On failure add blocked label and guidance
+        if: failure() && github.event_name == 'issues'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            if (!issue) return;
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              labels: ['swaif:blocked']
+            });
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: [
+                'Factory step failed and issue was marked `swaif:blocked`.',
+                '',
+                'Next steps:',
+                '1. Review workflow logs for the failing stage.',
+                '2. Fix missing prerequisites or issue metadata.',
+                '3. Re-apply the intended stage label to re-run exactly one step.'
+              ].join('\n')
+            });
