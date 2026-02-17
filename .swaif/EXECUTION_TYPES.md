@@ -9,6 +9,7 @@ Each execution type determines:
 - Governance level
 - Logging requirements
 - Definition of Done (DoD)
+- Branching policy
 
 Execution repositories must explicitly declare which type applies to each case.
 
@@ -43,6 +44,13 @@ Standard stage-gated workflow enforced.
 - Tests passing
 - Stage gates completed
 - Case summary recorded
+
+## Branching Policy
+- Base branch: `main`
+- Working branch pattern: `feature/<case-id>-hands-on`
+- Merge method: squash merge (single commit per case)
+- Protection level: required CI checks + 1 reviewer
+- Hotfix handling: optional `hotfix/<case-id>` branch for urgent fixes, then squash into `main`
 
 ---
 
@@ -81,6 +89,14 @@ Strict freeze policy enforced.
 - Experimental integrity validated
 - Summary report produced
 
+## Branching Policy
+- Base branch: `research/main` (or protected `main` if a dedicated research branch does not exist)
+- Working branch pattern: `research/<case-id>-exp`
+- Merge method: rebase merge to preserve commit-level chronology for analysis
+- Protection level: required CI checks + 2 reviewers (one method owner)
+- Freeze rule: after AC freeze, only commits that map to pre-approved tasks are allowed
+- Tagging: create immutable tag `research/<case-id>/freeze` at spec freeze and `research/<case-id>/final` at completion
+
 ---
 
 # 3. Prototype
@@ -111,6 +127,13 @@ Stage gates applied with flexibility.
 - Feasibility proven
 - Risks identified
 - Clear go/no-go decision documented
+
+## Branching Policy
+- Base branch: `develop`
+- Working branch pattern: `proto/<case-id>`
+- Merge method: squash merge
+- Protection level: lightweight CI + 1 reviewer
+- Lifecycle rule: prototype branches may be archived after decision and should not be promoted directly to production
 
 ---
 
@@ -145,6 +168,13 @@ High discipline, audit-friendly.
 - Functional validation completed
 - Regulatory constraints evaluated
 - Deployment readiness assessed
+
+## Branching Policy
+- Base branch: `preprod`
+- Working branch pattern: `poc/<case-id>`
+- Merge method: rebase merge
+- Protection level: required CI/security checks + 2 reviewers
+- Promotion rule: only signed release branches `release/poc/<case-id>` may be promoted to `main`
 
 ---
 
@@ -183,6 +213,13 @@ Full stage-gated enforcement.
 - Documentation complete
 - Audit trail preserved
 
+## Branching Policy
+- Base branch: `main`
+- Working branch pattern: `mvp/<case-id>`
+- Merge method: squash merge by default; rebase merge allowed when maintaining traceability across multiple implementation commits is required
+- Protection level: full CI/CD, security scanning, and 2 reviewers
+- Release rule: cut `release/<version>` from the merged branch before deployment
+
 ---
 
 # 6. Scaled Product
@@ -218,6 +255,13 @@ Maximum discipline.
 - Monitoring and rollback strategies in place
 - Maintenance strategy documented
 
+## Branching Policy
+- Base branch: `main`
+- Working branch pattern: `product/<domain>/<case-id>`
+- Merge method: rebase merge (or merge commit when preserving multi-team integration history is required)
+- Protection level: strict branch protection, mandatory status checks, CODEOWNERS approval, and change-management sign-off
+- Multi-stream rule: long-lived support branches `support/<major>.x` and emergency branches `hotfix/<incident-id>` are mandatory for production continuity
+
 ---
 
 # Execution Declaration Rule
@@ -241,5 +285,4 @@ Execution types allow SWAIF to:
 - Support high-ticket healthcare engagements
 
 This classification is mandatory for all SWAIF execution repositories.
-
 
