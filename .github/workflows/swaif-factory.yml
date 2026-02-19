@@ -251,6 +251,7 @@ jobs:
               ].join('\n')
             });
 
+      
       - name: Update Project Board - Success
         if: github.event_name == 'issues'
         uses: actions/github-script@v7
@@ -259,6 +260,7 @@ jobs:
           FEATURE_SLUG: ${{ steps.meta.outputs.feature_slug }}
           EXECUTION_TYPE: ${{ steps.meta.outputs.execution_type }}
         with:
+          github-token: ${{ secrets.PROJECTS_TOKEN }}
           script: |
             const orgLogin = context.repo.owner;
             const issueNodeId = context.payload.issue?.node_id;
@@ -441,6 +443,7 @@ jobs:
         if: failure() && github.event_name == 'issues'
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.PROJECTS_TOKEN }}
           script: |
             const orgLogin = context.repo.owner;
             const issueNodeId = context.payload.issue?.node_id;
