@@ -123,5 +123,14 @@ if [[ -z "$(git status --porcelain -- "$feature_dir")" ]]; then
   exit 0
 fi
 
+# Ensure git identity exists for non-interactive commits (CI/local).
+# If not set, git commit can fail with: "fatal: empty ident name ... not allowed".
+if ! git config --get user.name >/dev/null; then
+  git config user.name "github-actions[bot]"
+fi
+if ! git config --get user.email >/dev/null; then
+  git config user.email "github-actions[bot]@users.noreply.github.com"
+fi
+
 git add "$feature_dir"
 git commit -m "swaif(${stage}): ${feature_slug} (issue #${issue_number})"
