@@ -435,7 +435,7 @@ jobs:
                 '🚫 **SWAIF stage failed** — issue marked `swaif:blocked`.',
                 '',
                 '**Next steps:**',
-                `1. 🔍 Review the [workflow logs](${logsUrl}) to identify the root cause.',
+                `1. 🔍 Review the [workflow logs](${logsUrl}) to identify the root cause.`,
                 '2. 🛠️ Fix missing prerequisites, issue metadata, or content.',
                 '3. 🏷️ Remove the `swaif:blocked` label.',
                 '4. 🔁 Re-apply the intended stage label to retry exactly one step.',
