@@ -409,6 +409,7 @@ jobs:
         with:
           script: |
             const issue = context.payload.issue;
+            const logsUrl = 'https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}';
             if (!issue) return;
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
@@ -424,9 +425,7 @@ jobs:
                 '🚫 **SWAIF stage failed** — issue marked `swaif:blocked`.',
                 '',
                 '**Next steps:**',
-                '1. 🔍 Review the [workflow logs](' +
-                  `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}` +
-                  ') to identify the root cause.',
+                '1. 🔍 Review the [workflow logs](${logsUrl}) to identify the root cause.',
                 '2. 🛠️ Fix missing prerequisites, issue metadata, or content.',
                 '3. 🏷️ Remove the `swaif:blocked` label.',
                 '4. 🔁 Re-apply the intended stage label to retry exactly one step.',
