@@ -125,10 +125,3 @@ fi
 
 git add "$feature_dir"
 git commit -m "swaif(${stage}): ${feature_slug} (issue #${issue_number})"
-
-# Let CI workflow handle pushing (avoids double-push). Allow local usage with SWAIF_PUSH=1.
-if [[ "${SWAIF_PUSH:-0}" == "1" ]]; then
-  git push -u origin "$branch"
-fi
-
-#git push -u origin "$branch"
