@@ -35,12 +35,22 @@ verify_marker="${feature_dir}/VERIFY_PLACEHOLDER.txt"
 
 mkdir -p "$feature_dir"
 
-git fetch origin "$branch" || true
+##git fetch origin "$branch" || true
+##if git show-ref --verify --quiet "refs/remotes/origin/${branch}"; then
+##  git checkout -B "$branch" "origin/$branch"
+##else
+##  git checkout -B "$branch"
+##fi
+
+git fetch --prune origin "+refs/heads/${branch}:refs/remotes/origin/${branch}" 2>/dev/null || true
 if git show-ref --verify --quiet "refs/remotes/origin/${branch}"; then
-  git checkout -B "$branch" "origin/$branch"
+  git checkout -B "${branch}" "refs/remotes/origin/${branch}"
 else
-  git checkout -B "$branch"
+  # Create the branch off the currently checked out commit (workflow checkout)
+  git checkout -B "${branch}"
 fi
+
+
 
 create_if_missing() {
   local target="$1"
@@ -91,20 +101,34 @@ Derived from: plan.md
     create_if_missing "$implement_marker" "Implement stage placeholder for ${feature_slug}
 Issue: #${issue_number}
 "
+    ##;;
+  ##verify)
+    ##[[ -f "$tasks_file" ]] || { echo "Missing prerequisite: $tasks_file" >&2; exit 1; }
+    ##create_if_missing "$verify_marker" "Verify stage placeholder for ${feature_slug}
+##Issue: #${issue_number}
+##"
     ;;
   verify)
-    [[ -f "$tasks_file" ]] || { echo "Missing prerequisite: $tasks_file" >&2; exit 1; }
+  # Verify should at least require the implementation marker (or implement artifacts), not tasks.md
+    [[ -f "$implement_marker" ]] || { echo "Missing prerequisite: $implement_marker" >&2; exit 1; }
     create_if_missing "$verify_marker" "Verify stage placeholder for ${feature_slug}
 Issue: #${issue_number}
 "
-    ;;
+  ;;
 esac
 
-if git diff --quiet -- "$feature_dir"; then
+# Check both tracked and untracked changes under feature_dir
+if [[ -z "$(git status --porcelain -- "$feature_dir")" ]]; then
   echo "No changes to commit for stage '${stage}'."
   exit 0
 fi
 
 git add "$feature_dir"
 git commit -m "swaif(${stage}): ${feature_slug} (issue #${issue_number})"
-git push -u origin "$branch"
+
+# Let CI workflow handle pushing (avoids double-push). Allow local usage with SWAIF_PUSH=1.
+if [[ "${SWAIF_PUSH:-0}" == "1" ]]; then
+  git push -u origin "$branch"
+fi
+
+#git push -u origin "$branch"
