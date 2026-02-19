@@ -134,6 +134,21 @@ jobs:
             core.setOutput('execution_type', executionType);
             core.setOutput('issue_number', issueNumber);
 
+      - name: On cancellation cleanup
+        if: cancelled() && github.event_name == 'issues'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECTS_SECRET }}
+          script: |
+            const issue = context.payload.issue;
+            if (!issue) return;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: '⚠️ **SWAIF workflow was manually cancelled.** Re-apply the stage label when ready to retry.'
+            });
+            
       - name: Clean up stage labels
         if: github.event_name == 'issues'
         uses: actions/github-script@v7
