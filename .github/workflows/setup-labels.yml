@@ -1,0 +1,53 @@
+name: Setup SWAIF Labels
+
+on:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  setup-labels:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create or update SWAIF labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = [
+              { name: 'swaif:specify',  color: '0E8A16', description: 'SWAIF stage: Specify' },
+              { name: 'swaif:plan',     color: '1D76DB', description: 'SWAIF stage: Plan' },
+              { name: 'swaif:tasks',    color: '5319E7', description: 'SWAIF stage: Tasks' },
+              { name: 'swaif:implement', color: 'FBCA04', description: 'SWAIF stage: Implement' },
+              { name: 'swaif:verify',   color: 'D93F0B', description: 'SWAIF stage: Verify' },
+              { name: 'swaif:blocked',  color: 'D73A4A', description: 'SWAIF: blocked — fix required before retrying' },
+            ];
+
+            for (const label of labels) {
+              try {
+                // Try to update the label if it already exists
+                await github.rest.issues.updateLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label.name,
+                  color: label.color,
+                  description: label.description
+                });
+                console.log(`Updated label: ${label.name}`);
+              } catch (err) {
+                if (err.status === 404) {
+                  // Label does not exist — create it
+                  await github.rest.issues.createLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    name: label.name,
+                    color: label.color,
+                    description: label.description
+                  });
+                  console.log(`Created label: ${label.name}`);
+                } else {
+                  throw err;
+                }
+              }
+            }
