@@ -166,6 +166,12 @@ jobs:
             "${{ steps.meta.outputs.execution_type }}" \
             "${{ steps.meta.outputs.issue_number }}"
 
+      - name: Push branch to remote
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git push --force-with-lease origin "swaif/${{ steps.meta.outputs.feature_slug }}"
+
       - name: Create or update PR
         uses: actions/github-script@v7
         env:
