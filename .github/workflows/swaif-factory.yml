@@ -55,6 +55,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Configure git identity (required for commits)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
       - name: Resolve stage and metadata
         id: meta
         uses: actions/github-script@v7
@@ -168,8 +173,6 @@ jobs:
 
       - name: Push branch to remote
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
           git push --force-with-lease origin "swaif/${{ steps.meta.outputs.feature_slug }}"
 
       - name: Create or update PR
@@ -409,7 +412,7 @@ jobs:
         with:
           script: |
             const issue = context.payload.issue;
-            const logsUrl = 'https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}';
+            const logsUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             if (!issue) return;
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
