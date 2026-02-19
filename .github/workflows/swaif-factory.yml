@@ -64,6 +64,7 @@ jobs:
         id: meta
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.PROJECTS_SECRET }}
           script: |
             const eventName = context.eventName;
             let stage = '';
@@ -137,6 +138,7 @@ jobs:
         if: github.event_name == 'issues'
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.PROJECTS_SECRET }}
           script: |
             const issue = context.payload.issue;
             if (!issue) return;
@@ -181,6 +183,7 @@ jobs:
           FEATURE_SLUG: ${{ steps.meta.outputs.feature_slug }}
           STAGE: ${{ steps.meta.outputs.stage }}
         with:
+          github-token: ${{ secrets.PROJECTS_SECRET }}
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
@@ -216,6 +219,7 @@ jobs:
           STAGE: ${{ steps.meta.outputs.stage }}
           FEATURE_SLUG: ${{ steps.meta.outputs.feature_slug }}
         with:
+          github-token: ${{ secrets.PROJECTS_SECRET }}
           script: |
             const issue = context.payload.issue;
             if (!issue) return;
@@ -260,7 +264,7 @@ jobs:
           FEATURE_SLUG: ${{ steps.meta.outputs.feature_slug }}
           EXECUTION_TYPE: ${{ steps.meta.outputs.execution_type }}
         with:
-          github-token: ${{ secrets.PROJECTS_TOKEN }}
+          github-token: ${{ secrets.PROJECTS_SECRET }}
           script: |
             const orgLogin = context.repo.owner;
             const issueNodeId = context.payload.issue?.node_id;
@@ -412,7 +416,7 @@ jobs:
         if: failure() && github.event_name == 'issues'
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.PROJECTS_TOKEN }}
+          github-token: ${{ secrets.PROJECTS_SECRET }}
           script: |
             const issue = context.payload.issue;
             const logsUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
@@ -444,7 +448,7 @@ jobs:
         if: failure() && github.event_name == 'issues'
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.PROJECTS_TOKEN }}
+          github-token: ${{ secrets.PROJECTS_SECRET }}
           script: |
             const orgLogin = context.repo.owner;
             const issueNodeId = context.payload.issue?.node_id;
