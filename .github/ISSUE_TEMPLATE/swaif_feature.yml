@@ -1,5 +1,6 @@
 name: SWAIF Feature
-about: Factory Input Package for stage-gated SWAIF execution
+description: Factory Input Package for stage-gated SWAIF execution
+title: "[SWAIF] "
 labels: []
 body:
   - type: markdown
