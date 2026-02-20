@@ -202,8 +202,27 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const head = `${owner}:swaif/${process.env.FEATURE_SLUG}`;
+
+            const headBranch = `swaif/${process.env.FEATURE_SLUG}`; // same-repo head
             const base = 'main';
+
+            // Ensure head ref exists and is readable
+            try {
+              await github.rest.git.getRef({
+                owner,
+                repo,
+                ref: `heads/${headBranch}`,
+              });
+              console.log(`Confirmed head branch exists: ${headBranch}`);
+            } catch (e) {
+              core.setFailed(
+                `Head branch '${headBranch}' is not readable/found. ` +
+                `Likely the 'git push' step failed or pushed to a different remote. ` +
+                `Details: ${e.message}`
+              );
+              return;
+            }
+
             const title = `SWAIF ${process.env.STAGE}: ${process.env.FEATURE_SLUG}`;
             const body = [
               'Automated SWAIF stage execution.',
@@ -211,20 +230,38 @@ jobs:
               `- Stage: \`${process.env.STAGE}\``,
               `- Feature: \`${process.env.FEATURE_SLUG}\``,
               '',
-              'SWAIF is a Spec-Driven Software Factory where production is stage-gated (no vibe coding), traceable, and driven by a Kanban state machine—each Kanban move runs exactly one factory step, and failures block until fixed.'
+              'SWAIF is a Spec-Driven Software Factory where production is stage-gated, traceable, and driven by a Kanban state machine.'
             ].join('\n');
 
-            const prs = await github.rest.pulls.list({ owner, repo, state: 'open', head, base });
+            // Find existing open PR from headBranch -> base
+            const prs = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: 'open',
+              head: `${owner}:${headBranch}`, // OK for filtering
+              base,
+            });
+
             if (prs.data.length > 0) {
               await github.rest.pulls.update({
                 owner,
                 repo,
                 pull_number: prs.data[0].number,
                 title,
-                body
+                body,
               });
+              console.log(`Updated PR #${prs.data[0].number}`);
             } else {
-              await github.rest.pulls.create({ owner, repo, head, base, title, body });
+              // For creation, use headBranch without owner prefix to avoid "refs not readable"
+              await github.rest.pulls.create({
+                owner,
+                repo,
+                head: headBranch,
+                base,
+                title,
+                body,
+              });
+              console.log(`Created PR from ${headBranch} -> ${base}`);
             }
 
       - name: Post success comment
