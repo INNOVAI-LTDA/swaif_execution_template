@@ -208,8 +208,8 @@ jobs:
             const body = [
               'Automated SWAIF stage execution.',
               '',
-              `- Stage: \\`${process.env.STAGE}\\``,
-              `- Feature: \\`${process.env.FEATURE_SLUG}\\``,
+              `- Stage: \`${process.env.STAGE}\``,
+              `- Feature: \`${process.env.FEATURE_SLUG}\``,
               '',
               'SWAIF is a Spec-Driven Software Factory where production is stage-gated (no vibe coding), traceable, and driven by a Kanban state machine—each Kanban move runs exactly one factory step, and failures block until fixed.'
             ].join('\n');
