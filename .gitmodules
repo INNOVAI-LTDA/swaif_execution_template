@@ -1,0 +1,3 @@
+[submodule ".swaif/engine/speckit"]
+	path = .swaif/engine/speckit
+	url = https://github.com/github/spec-kit.git
