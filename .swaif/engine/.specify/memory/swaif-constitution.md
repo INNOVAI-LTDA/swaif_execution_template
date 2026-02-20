@@ -7,11 +7,11 @@
 | Field | Value |
 |-------|-------|
 | **Version** | 1.0.0 |
-| **Effective Date** | YYYY-MM-DD |
-| **Last Amended** | YYYY-MM-DD |
-| **Authority** | [Engineering Lead, Tech Lead, Product Owner] |
-| **Scope** | [Project/Organization Name] |
-| **Status** | Draft / Active / Superseded |
+| **Effective Date** | 2026-02-20 |
+| **Last Amended** | 2026-02-20 |
+| **Authority** | SWAIF Constitution Council (Engineering Lead + Tech Lead + Product Owner) |
+| **Scope** | INNOVAI-LTDA/swaif_execution_template (all SWAIF-managed branches and artifacts) |
+| **Status** | Active |
 
 ---
 
@@ -54,13 +54,8 @@ This constitution may be waived for:
 
 ### Constitutional Authority
 
-The authority to interpret, amend, and enforce this constitution rests with: **[Define your governance structure here]**
-
-Example:
-- **Constitutional Authority**: Engineering Lead + Tech Lead (joint approval required)
-- **Amendment Power**: Requires 2/3 team vote after 1-week comment period
-- **Enforcement**: Tech Lead reviews compliance, escalates violations
-- **Exceptions**: Require written justification and authority approval
+The authority to interpret, amend, and enforce this constitution rests with the
+**SWAIF Constitution Council (Engineering Lead + Tech Lead + Product Owner)**.
 
 ---
 
@@ -665,13 +660,13 @@ This constitution MAY be amended by:
 
 1. **Proposal**: Any team member may propose an amendment
 2. **Comment Period**: 1-week minimum for team feedback
-3. **Vote**: Requires [2/3 majority / unanimous consent / authority approval]
-4. **Effective Date**: Amendments take effect after [1 week / next sprint / immediate]
+3. **Vote**: Requires 2/3 majority of the SWAIF Constitution Council
+4. **Effective Date**: Amendments take effect at the start of the next sprint unless explicitly marked urgent by the council
 
 **Amendment History**:
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
-| 1.0.0 | YYYY-MM-DD | Initial constitution | [Name] |
+| 1.0.0 | 2026-02-20 | Initial ratified constitution for SWAIF execution template | SWAIF Constitution Council |
 
 ### Enforcement
 
@@ -699,7 +694,7 @@ All exceptions MUST be documented and time-limited.
 
 ### Constitutional Authority
 
-**Primary Authority**: [Engineering Lead + Tech Lead]
+**Primary Authority**: SWAIF Constitution Council
 
 **Responsibilities**:
 - Interpret constitutional requirements
@@ -707,112 +702,14 @@ All exceptions MUST be documented and time-limited.
 - Enforce compliance
 - Resolve disputes
 
-**Term**: [Duration or "Until successor appointed"]
-# SWAIF Constitution Template
-
-> Template owner: Governance Council / Principal Architecture.
-> Expected inputs: organizational mission, regulatory context, risk appetite, and delivery model.
-
-## Preamble
-
-We establish this constitution to ensure all software initiatives remain safe, valuable, auditable, and operationally sustainable. This document defines binding principles, decision rights, and enforcement pathways for delivery teams.
-
----
-
-## Article I — Purpose and Scope
-
-- Define the mission and boundaries of the system.
-- Identify in-scope products, platforms, and stakeholder groups.
-- Clarify exclusions and non-goals.
-
-## Article II — Values and Design Principles
-
-- Enumerate primary values (e.g., safety, transparency, reliability).
-- Provide precedence rules when values conflict.
-- Define principle interpretation guidance.
-
-## Article III — Roles and Decision Rights
-
-- Define accountable roles (e.g., Product Owner, Tech Lead, Security Lead).
-- Map decision authorities by domain.
-- Specify escalation routes for disputed decisions.
-
-## Article IV — Delivery Lifecycle and Stage Gates
-
-- Define required lifecycle stages.
-- Specify mandatory entry/exit criteria per stage.
-- Include evidence requirements for gate approval.
-
-## Article V — Quality, Reliability, and NFR Baselines
-
-- State baseline quality metrics and reliability targets.
-- Define minimum testing obligations.
-- Define availability, performance, and recoverability baselines.
-
-## Article VI — Security, Privacy, and Compliance
-
-- Define security baseline requirements.
-- Define privacy/data-handling obligations.
-- Identify compliance frameworks and audit expectations.
-
-## Article VII — Risk and Exception Management
-
-- Define risk scoring and treatment expectations.
-- Define exception process (who can approve, duration, and compensating controls).
-- Define revalidation cadence for accepted risks.
-
-## Article VIII — Observability and Operational Readiness
-
-- Define logging, metrics, tracing, and alerting minimums.
-- Define incident management obligations.
-- Define operational readiness checklist requirements.
-
-## Article IX — Change Management and Accountability
-
-- Define change proposal process.
-- Define review quorum and approval thresholds.
-- Define accountability for violations and remediation timelines.
-
----
-
-## Governance Model
-
-### Governing Bodies
-- **Constitution Council**: owns this document and major amendments.
-- **Architecture Review Board**: validates technical alignment.
-- **Risk & Compliance Committee**: validates risk posture and compliance adherence.
-
-### Decision Cadence
-- Regular governance review cadence: `[e.g., monthly]`
-- Emergency decision process: `[document trigger + approvers + communication path]`
-
-### Enforcement
-- Required evidence artifacts: `[links to templates, reports, and logs]`
-- Non-compliance handling: `[action plan, waiver, or rollout stop]`
-
----
-
-## Version History
-
-### Version 1.0.0 (YYYY-MM-DD)
-- Initial constitution
-- Established 9 foundational articles
-- Defined governance and amendment process
-
----
+**Term**: Until successor appointed by repository ownership governance.
 
 ## Ratification
 
-This constitution is hereby ratified and adopted as the governing framework for [Project/Organization Name].
+This constitution is hereby ratified and adopted as the governing framework for
+the SWAIF execution repository `INNOVAI-LTDA/swaif_execution_template`.
 
-**Signatures**:
-
-| Role | Name | Signature | Date |
-|------|------|-----------|------|
-| Engineering Lead | [Name] | __________ | ______ |
-| Tech Lead | [Name] | __________ | ______ |
-| Product Owner | [Name] | __________ | ______ |
-| [Other Stakeholder] | [Name] | __________ | ______ |
+**Ratified by**: SWAIF Constitution Council (Engineering Lead, Tech Lead, Product Owner) on 2026-02-20.
 
 ---
 
@@ -856,9 +753,4 @@ A: Yes! Use Challenger mode prompts and automated validators.
 
 **End of Constitution**
 
-This constitution is a living document. Propose improvements via [your process].
-| Version | Date | Author | Summary of Changes | Approved By |
-|---|---|---|---|---|
-| 0.1.0 | YYYY-MM-DD | `[name]` | Initial draft | `[governing body]` |
-| 0.1.1 | YYYY-MM-DD | `[name]` | `[minor update]` | `[governing body]` |
-| 1.0.0 | YYYY-MM-DD | `[name]` | Ratified baseline constitution | `[governing body]` |
+This constitution is a living document. Propose improvements via pull request and SWAIF Constitution Council review.
