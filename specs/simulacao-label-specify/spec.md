@@ -3,9 +3,10 @@
 - Declared Execution Type: swaif-test
 - Issue: #99999
 
+
 ## Problem
-_TODO_
+Implementar um arquivo Python chamado speckit_test.py que imprime 'Speckit OK'.
 
 ## Acceptance Criteria
-- [ ] AC-001 _TODO_
+- [ ] AC-001 O arquivo speckit_test.py deve conter print('Speckit OK')
 
