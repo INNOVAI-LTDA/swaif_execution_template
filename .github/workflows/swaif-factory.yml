@@ -1,3 +1,4 @@
+
 name: SWAIF Factory
 
 on:
@@ -31,7 +32,7 @@ permissions:
   repository-projects: write
 
 concurrency:
-  group: swaif-factory-${{ github.event_name }}-${{ github.event.issue.number || github.ref }}
+  group: swaif-factory-issues-${{ github.event.issue.number }}-${{ github.event.label.name }}
   cancel-in-progress: true
 
 jobs:
@@ -55,10 +56,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Configure git identity (required for commits)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
       - name: Resolve stage and metadata
         id: meta
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.PROJECTS_SECRET }}
           script: |
             const eventName = context.eventName;
             let stage = '';
@@ -128,10 +135,26 @@ jobs:
             core.setOutput('execution_type', executionType);
             core.setOutput('issue_number', issueNumber);
 
+      - name: On cancellation cleanup
+        if: cancelled() && github.event_name == 'issues'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECTS_SECRET }}
+          script: |
+            const issue = context.payload.issue;
+            if (!issue) return;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: '⚠️ **SWAIF workflow was manually cancelled.** Re-apply the stage label when ready to retry.'
+            });
+            
       - name: Clean up stage labels
         if: github.event_name == 'issues'
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.PROJECTS_SECRET }}
           script: |
             const issue = context.payload.issue;
             if (!issue) return;
@@ -168,8 +191,6 @@ jobs:
 
       - name: Push branch to remote
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
           git push --force-with-lease origin "swaif/${{ steps.meta.outputs.feature_slug }}"
 
       - name: Create or update PR
@@ -178,6 +199,7 @@ jobs:
           FEATURE_SLUG: ${{ steps.meta.outputs.feature_slug }}
           STAGE: ${{ steps.meta.outputs.stage }}
         with:
+          github-token: ${{ secrets.PROJECTS_SECRET }}
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
@@ -213,6 +235,7 @@ jobs:
           STAGE: ${{ steps.meta.outputs.stage }}
           FEATURE_SLUG: ${{ steps.meta.outputs.feature_slug }}
         with:
+          github-token: ${{ secrets.PROJECTS_SECRET }}
           script: |
             const issue = context.payload.issue;
             if (!issue) return;
@@ -248,6 +271,7 @@ jobs:
               ].join('\n')
             });
 
+      
       - name: Update Project Board - Success
         if: github.event_name == 'issues'
         uses: actions/github-script@v7
@@ -256,6 +280,7 @@ jobs:
           FEATURE_SLUG: ${{ steps.meta.outputs.feature_slug }}
           EXECUTION_TYPE: ${{ steps.meta.outputs.execution_type }}
         with:
+          github-token: ${{ secrets.PROJECTS_SECRET }}
           script: |
             const orgLogin = context.repo.owner;
             const issueNodeId = context.payload.issue?.node_id;
@@ -407,8 +432,10 @@ jobs:
         if: failure() && github.event_name == 'issues'
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.PROJECTS_SECRET }}
           script: |
             const issue = context.payload.issue;
+            const logsUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             if (!issue) return;
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
@@ -424,9 +451,7 @@ jobs:
                 '🚫 **SWAIF stage failed** — issue marked `swaif:blocked`.',
                 '',
                 '**Next steps:**',
-                '1. 🔍 Review the [workflow logs](' +
-                  `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}` +
-                  ') to identify the root cause.',
+                `1. 🔍 Review the [workflow logs](${logsUrl}) to identify the root cause.`,
                 '2. 🛠️ Fix missing prerequisites, issue metadata, or content.',
                 '3. 🏷️ Remove the `swaif:blocked` label.',
                 '4. 🔁 Re-apply the intended stage label to retry exactly one step.',
@@ -439,6 +464,7 @@ jobs:
         if: failure() && github.event_name == 'issues'
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.PROJECTS_SECRET }}
           script: |
             const orgLogin = context.repo.owner;
             const issueNodeId = context.payload.issue?.node_id;
