@@ -71,6 +71,12 @@ jobs:
             let stage = '';
             let featureSlug = '';
             let executionType = '';
+            let overview = '';
+            let problemStatement = '';
+            let scope = '';
+            let acceptanceCriteria = '';
+            let constraints = '';
+            let nonGoals = '';
             let issueNumber = '';
             const allowedStages = new Set(['specify', 'plan', 'tasks', 'implement', 'verify']);
 
@@ -99,8 +105,24 @@ jobs:
 
               featureSlug = readHeading('Feature Slug');
               executionType = readHeading('Declared Execution Type');
+              overview = readHeading('Overview');
+              problemStatement = readHeading('Problem Statement');
+              scope = readHeading('Scope');
+              acceptanceCriteria = readHeading('Acceptance Criteria');
+              constraints = readHeading('Constraints');
+              nonGoals = readHeading('Non-Goals');
 
-              if (!featureSlug || !executionType) {
+              const missingRequiredSections = [];
+              if (!featureSlug) missingRequiredSections.push('### Feature Slug');
+              if (!executionType) missingRequiredSections.push('### Declared Execution Type');
+              if (!overview) missingRequiredSections.push('### Overview');
+              if (!problemStatement) missingRequiredSections.push('### Problem Statement');
+              if (!scope) missingRequiredSections.push('### Scope');
+              if (!acceptanceCriteria) missingRequiredSections.push('### Acceptance Criteria');
+              if (!constraints) missingRequiredSections.push('### Constraints');
+              if (!nonGoals) missingRequiredSections.push('### Non-Goals');
+
+              if (missingRequiredSections.length > 0) {
                 await github.rest.issues.createComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -109,8 +131,7 @@ jobs:
                     'Missing required metadata for SWAIF automation.',
                     '',
                     'Please edit the issue body and provide values directly under:',
-                    '- `### Feature Slug`',
-                    '- `### Declared Execution Type`',
+                    ...missingRequiredSections.map((heading) => `- \`${heading}\``),
                     '',
                     'Then re-apply one stage label: `swaif:specify`, `swaif:plan`, `swaif:tasks`, `swaif:implement`, or `swaif:verify`.'
                   ].join('\n')

@@ -29,9 +29,66 @@ body:
     validations:
       required: true
   - type: textarea
-    id: fip
+    id: overview
     attributes:
-      label: Factory Input Package
-      description: Provide business context, constraints, acceptance criteria, and non-goals.
+      label: Overview
+      description: Summarize the feature and desired outcome.
+      placeholder: Describe what this feature is and why it matters.
     validations:
       required: true
+  - type: textarea
+    id: problem_statement
+    attributes:
+      label: Problem Statement
+      description: Describe the pain/problem this work solves.
+      placeholder: What problem are we solving?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: List what is in scope for this feature.
+      value: |
+        - In-scope item 1
+        - In-scope item 2
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Use measurable checklist items with AC IDs.
+      value: |
+        - [ ] AC-001 Measurable expected outcome
+        - [ ] AC-002 Measurable expected outcome
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints
+      description: List technical, timeline, compliance, or dependency constraints.
+      value: |
+        - Constraint 1
+        - Constraint 2
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-Goals
+      description: Explicitly list what is out of scope.
+      value: |
+        - Out-of-scope item 1
+        - Out-of-scope item 2
+    validations:
+      required: true
+  - type: textarea
+    id: implementation_hints
+    attributes:
+      label: Implementation Hints (optional)
+      description: Optional references, docs, or technical pointers.
+      placeholder: Helpful references or implementation notes.
+    validations:
+      required: false
