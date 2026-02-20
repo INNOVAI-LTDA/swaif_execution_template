@@ -11,7 +11,7 @@ body:
     id: feature_slug
     attributes:
       label: Feature Slug
-      description: Use kebab-case. Example: 001-clinic-billing
+      description: "Use kebab-case. Example: 001-clinic-billing"
       placeholder: 001-example-feature
     validations:
       required: true
