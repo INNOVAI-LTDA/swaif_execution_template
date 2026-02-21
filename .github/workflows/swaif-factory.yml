@@ -10,6 +10,7 @@ on:
         required: true
         type: choice
         options:
+          - init
           - specify
           - plan
           - tasks
@@ -223,7 +224,12 @@ jobs:
             echo
 
               # Adapted: Use SpecKit CLI for stage control as in speckit-wf.yml
-              if [[ "${{ steps.meta.outputs.stage }}" == "specify" ]]; then
+              if [[ "${{ steps.meta.outputs.stage }}" == "init" ]]; then
+                echo " Installing SpecKit..."
+                npm install -g @github/spec-kit
+                echo " Testing which CLI to use speckit:"
+                specify --version || speckit --version || specify -h || speckit -h
+              elif [[ "${{ steps.meta.outputs.stage }}" == "specify" ]]; then
                 specify generate --config path/to/constitution.yaml
               elif [[ "${{ steps.meta.outputs.stage }}" == "plan" ]]; then
                 specify plan --config path/to/constitution.yaml
