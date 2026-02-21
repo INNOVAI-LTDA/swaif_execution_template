@@ -237,6 +237,8 @@ jobs:
 
               # Adapted: Use SpecKit CLI for stage control as in speckit-wf.yml
               if [[ "${{ steps.meta.outputs.stage }}" == "init" ]]; then
+                echo " Installing uv..."
+                pip install uv
                 echo " Installing SpecKit..."
                 uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
                 echo " Testing which CLI to use speckit:"
