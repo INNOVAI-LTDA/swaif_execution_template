@@ -135,7 +135,7 @@ jobs:
                     'Please edit the issue body and provide values directly under:',
                     ...missingRequiredSections.map((heading) => `- \`${heading}\``),
                     '',
-                    'Then re-apply one stage label: `swaif:specify`, `swaif:plan`, `swaif:tasks`, `swaif:implement`, or `swaif:verify`.'
+                    'Then re-apply one stage label: `swaif:init`, `swaif:specify`, `swaif:plan`, `swaif:tasks`, `swaif:implement`, or `swaif:verify`.'
                   ].join('\n')
                 });
                 core.setFailed('Issue metadata missing.');
