@@ -1,0 +1,25 @@
+name: Simple SpecKit Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  speckit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install uv (needed for SpecKit)
+        run: pip install uv
+
+      - name: Install SpecKit CLI from GitHub
+        run: uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+
+      - name: Run SpecKit version command (basic test)
+        run: specify version
