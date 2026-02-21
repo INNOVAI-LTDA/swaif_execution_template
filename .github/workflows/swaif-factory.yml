@@ -142,7 +142,7 @@ jobs:
                 return;
               }
             }
-
+            core.setOutput(`Selected stage: '${stage}'`);
             if (!allowedStages.has(stage)) {
               core.setFailed(`Invalid stage '${stage}'. Must be exactly one of: init, specify, plan, tasks, implement, verify.`);
               return;
