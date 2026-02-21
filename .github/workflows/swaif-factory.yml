@@ -280,6 +280,7 @@ jobs:
 
       - name: Push branch to remote
         run: |
+          git checkout -b "swaif/${{ steps.meta.outputs.feature_slug }}"
           git push --force-with-lease origin "swaif/${{ steps.meta.outputs.feature_slug }}"
 
       - name: Create or update PR
