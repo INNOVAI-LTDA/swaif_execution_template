@@ -80,7 +80,7 @@ jobs:
             let constraints = '';
             let nonGoals = '';
             let issueNumber = '';
-            const allowedStages = new Set(['init','specify', 'plan', 'tasks', 'implement', 'verify']);
+            const allowedStages = new Set(['init', 'specify', 'plan', 'tasks', 'implement', 'verify']);
 
             if (eventName === 'workflow_dispatch') {
               stage = core.getInput('stage').trim();
