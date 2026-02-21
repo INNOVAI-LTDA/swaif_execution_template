@@ -16,6 +16,7 @@ jobs:
         with:
           script: |
             const labels = [
+              { name: 'swaif:init',  color: 'A56FAF', description: 'SWAIF stage: Init Speckit' },
               { name: 'swaif:specify',  color: '0E8A16', description: 'SWAIF stage: Specify' },
               { name: 'swaif:plan',     color: '1D76DB', description: 'SWAIF stage: Plan' },
               { name: 'swaif:tasks',    color: '5319E7', description: 'SWAIF stage: Tasks' },
