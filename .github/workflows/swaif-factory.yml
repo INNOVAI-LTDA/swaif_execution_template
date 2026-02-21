@@ -238,7 +238,7 @@ jobs:
               # Adapted: Use SpecKit CLI for stage control as in speckit-wf.yml
               if [[ "${{ steps.meta.outputs.stage }}" == "init" ]]; then
                 echo " Installing SpecKit..."
-                npm install -g @github/spec-kit
+                uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
                 echo " Testing which CLI to use speckit:"
                 specify --version || speckit --version || specify -h || speckit -h
               elif [[ "${{ steps.meta.outputs.stage }}" == "specify" ]]; then
