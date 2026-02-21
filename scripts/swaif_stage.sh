@@ -26,6 +26,7 @@ fi
 
 feature_slug="${feature_dir#specs/}"
 branch="swaif/${feature_slug}"
+repo_root="$(pwd)"
 
 spec_file="${feature_dir}/spec.md"
 plan_file="${feature_dir}/plan.md"
@@ -35,6 +36,9 @@ verify_marker="${feature_dir}/VERIFY_PLACEHOLDER.txt"
 speckit_root=".swaif/engine/speckit"
 speckit_agent_template="${speckit_root}/templates/agent-file-template.md"
 speckit_agent_update_script="${speckit_root}/scripts/bash/update-agent-context.sh"
+speckit_create_feature_script="${speckit_root}/scripts/bash/create-new-feature.sh"
+speckit_setup_plan_script="${speckit_root}/scripts/bash/setup-plan.sh"
+speckit_check_prereq_script="${speckit_root}/scripts/bash/check-prerequisites.sh"
 agent_file=".github/agents/copilot-instructions.md"
 
 mkdir -p "$feature_dir"
@@ -62,6 +66,89 @@ create_if_missing() {
   if [[ ! -f "$target" ]]; then
     printf "%s\n" "$content" > "$target"
   fi
+}
+
+prepare_speckit_sandbox() {
+  local sandbox_root="$1"
+  local sandbox_feature="$2"
+  local sandbox_feature_dir="${sandbox_root}/specs/${sandbox_feature}"
+
+  mkdir -p "${sandbox_root}/.specify/templates"
+  mkdir -p "${sandbox_root}/specs"
+
+  if [[ -d ".specify/templates" ]]; then
+    cp -R .specify/templates/. "${sandbox_root}/.specify/templates/"
+  fi
+
+  if [[ -d "${speckit_root}/templates" ]]; then
+    cp -R "${speckit_root}/templates/." "${sandbox_root}/.specify/templates/"
+  fi
+
+  mkdir -p "$sandbox_feature_dir"
+
+  if [[ -f "$spec_file" ]]; then
+    cp "$spec_file" "${sandbox_feature_dir}/spec.md"
+  fi
+  if [[ -f "$plan_file" ]]; then
+    cp "$plan_file" "${sandbox_feature_dir}/plan.md"
+  fi
+  if [[ -f "$tasks_file" ]]; then
+    cp "$tasks_file" "${sandbox_feature_dir}/tasks.md"
+  fi
+}
+
+run_speckit_stage_hook() {
+  local stage_name="$1"
+  local sandbox_root=""
+  local speckit_feature="900-${feature_slug}"
+
+  if [[ ! -d "$speckit_root" ]]; then
+    echo "Speckit submodule not found at $speckit_root" >&2
+    exit 1
+  fi
+
+  sandbox_root="$(mktemp -d)"
+
+  prepare_speckit_sandbox "$sandbox_root" "$speckit_feature"
+
+  case "$stage_name" in
+    specify)
+      [[ -f "$speckit_create_feature_script" ]] || { echo "Missing Speckit script: $speckit_create_feature_script" >&2; exit 1; }
+      (
+        cd "$sandbox_root"
+        bash "${repo_root}/${speckit_create_feature_script}" --json --short-name "$feature_slug" --number 900 "$feature_slug" >/dev/null
+      )
+      if [[ -f "${sandbox_root}/specs/${speckit_feature}/spec.md" ]]; then
+        cp "${sandbox_root}/specs/${speckit_feature}/spec.md" "$spec_file"
+      fi
+      ;;
+    plan)
+      [[ -f "$speckit_setup_plan_script" ]] || { echo "Missing Speckit script: $speckit_setup_plan_script" >&2; exit 1; }
+      (
+        cd "$sandbox_root"
+        SPECIFY_FEATURE="$speckit_feature" bash "${repo_root}/${speckit_setup_plan_script}" --json >/dev/null
+      )
+      if [[ -f "${sandbox_root}/specs/${speckit_feature}/plan.md" ]]; then
+        cp "${sandbox_root}/specs/${speckit_feature}/plan.md" "$plan_file"
+      fi
+      ;;
+    tasks)
+      [[ -f "$speckit_check_prereq_script" ]] || { echo "Missing Speckit script: $speckit_check_prereq_script" >&2; exit 1; }
+      (
+        cd "$sandbox_root"
+        SPECIFY_FEATURE="$speckit_feature" bash "${repo_root}/${speckit_check_prereq_script}" --json >/dev/null
+      )
+      ;;
+    implement)
+      [[ -f "$speckit_check_prereq_script" ]] || { echo "Missing Speckit script: $speckit_check_prereq_script" >&2; exit 1; }
+      (
+        cd "$sandbox_root"
+        SPECIFY_FEATURE="$speckit_feature" bash "${repo_root}/${speckit_check_prereq_script}" --json --require-tasks --include-tasks >/dev/null
+      )
+      ;;
+  esac
+
+  rm -rf "$sandbox_root"
 }
 
 bootstrap_speckit_agent_context() {
@@ -136,6 +223,7 @@ customize_speckit_agent_context() {
 
 case "$stage" in
   specify)
+    run_speckit_stage_hook "specify"
     create_if_missing "$spec_file" "# Spec: ${feature_slug}
 
 - Declared Execution Type: ${execution_type}
@@ -150,6 +238,7 @@ _TODO_
     ;;
   plan)
     [[ -f "$spec_file" ]] || { echo "Missing prerequisite: $spec_file" >&2; exit 1; }
+    run_speckit_stage_hook "plan"
     create_if_missing "$plan_file" "# Plan: ${feature_slug}
 
 Derived from: spec.md
@@ -163,6 +252,7 @@ _TODO_
     ;;
   tasks)
     [[ -f "$plan_file" ]] || { echo "Missing prerequisite: $plan_file" >&2; exit 1; }
+    run_speckit_stage_hook "tasks"
     create_if_missing "$tasks_file" "# Tasks: ${feature_slug}
 
 Derived from: plan.md
@@ -172,6 +262,7 @@ Derived from: plan.md
     ;;
   implement)
     [[ -f "$tasks_file" ]] || { echo "Missing prerequisite: $tasks_file" >&2; exit 1; }
+    run_speckit_stage_hook "implement"
     create_if_missing "$implement_marker" "Implement stage placeholder for ${feature_slug}
 Issue: #${issue_number}
 "

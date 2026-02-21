@@ -222,11 +222,21 @@ jobs:
             echo "execution_type=${{ steps.meta.outputs.execution_type }}"
             echo
 
-            ./scripts/swaif_stage.sh \
-              "${{ steps.meta.outputs.stage }}" \
-              "specs/${{ steps.meta.outputs.feature_slug }}" \
-              "${{ steps.meta.outputs.execution_type }}" \
-              "${{ steps.meta.outputs.issue_number }}"
+              # Adapted: Use SpecKit CLI for stage control as in speckit-wf.yml
+              if [[ "${{ steps.meta.outputs.stage }}" == "specify" ]]; then
+                specify generate --config path/to/constitution.yaml
+              elif [[ "${{ steps.meta.outputs.stage }}" == "plan" ]]; then
+                specify plan --config path/to/constitution.yaml
+              elif [[ "${{ steps.meta.outputs.stage }}" == "tasks" ]]; then
+                specify task --config path/to/constitution.yaml
+              elif [[ "${{ steps.meta.outputs.stage }}" == "implement" ]]; then
+                specify implement --config path/to/constitution.yaml
+              elif [[ "${{ steps.meta.outputs.stage }}" == "verify" ]]; then
+                echo "Verify stage logic here (customize as needed)"
+              else
+                echo "Unknown stage: ${{ steps.meta.outputs.stage }}"
+                exit 1
+              fi
           } 2>&1 | tee -a "$log_file"
 
       - name: Upload SWAIF stage logs
