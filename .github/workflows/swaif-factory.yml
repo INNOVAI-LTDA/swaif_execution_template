@@ -562,6 +562,26 @@ jobs:
             const issue = context.payload.issue;
             const logsUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             if (!issue) return;
+            // Remove the currently applied swaif stage label if present
+            const currentLabel = context.payload.label?.name || '';
+            const stageLabels = [
+              'swaif:init', 'swaif:specify', 'swaif:plan',
+              'swaif:tasks', 'swaif:implement', 'swaif:verify'
+            ];
+            
+            if (currentLabel && stageLabels.includes(currentLabel)) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  name: currentLabel
+                });
+              } catch (err) {
+                // Label might already have been removed or not present
+                console.log(`Could not remove label '${currentLabel}': ${err.message}`);
+              }
+            }
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
