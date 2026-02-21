@@ -87,6 +87,17 @@ jobs:
               featureSlug = core.getInput('feature_slug').trim();
               executionType = core.getInput('declared_execution_type').trim();
               issueNumber = '0';
+            
+              console.log(`[DEBUG] stage='${stage}' featureSlug='${featureSlug}' executionType='${executionType}'`);
+            
+              if (!stage) {
+                core.setFailed("Stage input cannot be empty. Please select a value when dispatching the workflow.");
+                return;
+              }
+              if (!allowedStages.has(stage)) {
+                core.setFailed(`Invalid stage '${stage}'. Must be one of: ${[...allowedStages].join(", ")}.`);
+                return;
+              }
             } else {
               const issue = context.payload.issue;
               issueNumber = String(issue.number);
