@@ -40,7 +40,8 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issues' &&
-      (github.event.label.name == 'swaif:specify' ||
+      (github.event.label.name == 'swaif:init' ||
+       github.event.label.name == 'swaif:specify' ||
        github.event.label.name == 'swaif:plan' ||
        github.event.label.name == 'swaif:tasks' ||
        github.event.label.name == 'swaif:implement' ||
@@ -79,7 +80,7 @@ jobs:
             let constraints = '';
             let nonGoals = '';
             let issueNumber = '';
-            const allowedStages = new Set(['specify', 'plan', 'tasks', 'implement', 'verify']);
+            const allowedStages = new Set(['init','specify', 'plan', 'tasks', 'implement', 'verify']);
 
             if (eventName === 'workflow_dispatch') {
               stage = core.getInput('stage').trim();
