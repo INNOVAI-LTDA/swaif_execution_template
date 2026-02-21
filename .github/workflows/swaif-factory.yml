@@ -242,7 +242,7 @@ jobs:
                 echo " Installing SpecKit..."
                 uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
                 echo " Testing which CLI to use speckit:"
-                specify --version || speckit --version || specify -h || speckit -h
+                specify version
               elif [[ "${{ steps.meta.outputs.stage }}" == "specify" ]]; then
                 specify generate --config path/to/constitution.yaml
               elif [[ "${{ steps.meta.outputs.stage }}" == "plan" ]]; then
