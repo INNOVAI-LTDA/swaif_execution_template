@@ -190,7 +190,7 @@ _TODO_
 	specify init . --ai codex --script sh --here --force --ai-skills
 	
 	# Setup Constitution to Speckit
-	codex exec --full-auto "/speckit.constitution $(cat constitution_file)"
+	codex exec --full-auto "/speckit.constitution $(cat "$constitution_file")"
 	;;
   specify)
     create_if_missing "$spec_file" "# Spec: ${feature_slug}
