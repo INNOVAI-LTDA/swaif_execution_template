@@ -227,7 +227,7 @@ jobs:
             echo
             export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
             ./scripts/swaif_stage.sh \
-              "${{ steps.get-title.outputs.title }}" \
+              "${{ github.event.issue.title }}" \
               "${{ steps.meta.outputs.stage }}" \
               "specs/${{ steps.meta.outputs.feature_slug }}" \
               "${{ steps.meta.outputs.execution_type }}" \
