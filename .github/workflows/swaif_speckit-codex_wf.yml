@@ -1,0 +1,74 @@
+name: Swaif Factory (Speckit + Codex CLI Full Cycle)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  swaif-speckit-cycle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Python 3.11 (for speckit specify-cli via uv)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv (Python package manager)
+        run: pip install uv
+
+      - name: Install speckit specify-cli from GitHub
+        run: uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+
+      - name: Install Codex CLI
+        run: npm i -g @openai/codex
+
+      # Optional: Combine templates if needed
+      - name: Combine constitution and spec templates
+        run: cat .swaif/engine/templates/constitution.md .swaif/engine/templates/spec.md > .swaif/engine/templates/combined-spec.md
+
+      - name: Specify – Refine requirements from combined templates
+        run: specify-cli /speckit.specify .swaif/engine/templates/combined-spec.md --output .swaif/engine/templates/spec.specific.md
+
+      - name: Plan – Create plan from specific spec
+        run: specify-cli /speckit.plan .swaif/engine/templates/spec.specific.md --output .swaif/engine/templates/plan.md
+
+      - name: Tasks – Task breakdown from plan
+        run: specify-cli /speckit.tasks .swaif/engine/templates/plan.md --output .swaif/engine/templates/tasks.md
+
+      - name: Clarify – Clarification round (optional)
+        run: specify-cli /speckit.clarify .swaif/engine/templates/tasks.md --output .swaif/engine/templates/clarification.md || echo "No clarifications needed"
+
+      - name: Implement – Generate code from tasks (example with Codex CLI, adjust as needed)
+        run: codex run "/speckit.implement .swaif/engine/templates/tasks.md --output-dir ./calculator"
+
+      - name: Checklist – Validation checklist from tasks
+        run: specify-cli /speckit.checklist .swaif/engine/templates/tasks.md --output .swaif/engine/templates/checklist.md
+
+      # If you want to test/lint Python code, you may add steps like:
+      - name: Install calculator requirements
+        run: |
+          if [ -f ./calculator/requirements.txt ]; then
+            pip install -r ./calculator/requirements.txt
+          fi
+
+      - name: Run tests (if generated)
+        run: |
+          if [ -d ./calculator/tests ]; then
+            python -m unittest discover -s ./calculator/tests
+          fi
+
+      - name: Lint code (flake8)
+        run: |
+          pip install flake8
+          flake8 ./calculator
