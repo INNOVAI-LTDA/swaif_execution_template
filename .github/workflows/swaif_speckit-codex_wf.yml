@@ -1,11 +1,7 @@
 name: Swaif Factory (Speckit + Codex CLI Full Cycle)
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
+  workflow_dispatch: 
 jobs:
   swaif-speckit-cycle:
     runs-on: ubuntu-latest
