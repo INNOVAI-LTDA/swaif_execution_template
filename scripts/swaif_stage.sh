@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-stage="${1:-}"
-feature_dir="${2:-}"
-execution_type="${3:-}"
-issue_number="${4:-}"
+issue_title="${1:-}"
+stage="${2:-}"
+feature_dir="${3:-}"
+execution_type="${4:-}"
+issue_number="${5:-}"
 
-if [[ -z "$stage" || -z "$feature_dir" || -z "$execution_type" || -z "$issue_number" ]]; then
-  echo "Usage: $0 <stage> <feature_dir> <execution_type> <issue_number>" >&2
+if [[ -z "$issue_title" || -z "$stage" || -z "$feature_dir" || -z "$execution_type" || -z "$issue_number" ]]; then
+  echo "Usage: $0 <issue_title> <stage> <feature_dir> <execution_type> <issue_number>" >&2
   exit 1
 fi
 
 case "$stage" in
-  specify|plan|tasks|implement|verify) ;;
+  init|specify|plan|tasks|implement|verify) ;;
   *)
     echo "Invalid stage: $stage" >&2
     exit 1
@@ -26,7 +27,8 @@ fi
 
 feature_slug="${feature_dir#specs/}"
 branch="swaif/${feature_slug}"
-
+intake_file="${feature_dir}/intake.md"
+constitution_file="${feature_dir}/constitution.md"
 spec_file="${feature_dir}/spec.md"
 plan_file="${feature_dir}/plan.md"
 tasks_file="${feature_dir}/tasks.md"
@@ -94,9 +96,9 @@ This file is managed by SWAIF stage automation and Speckit agent sync.
 
 ## SWAIF Stage Guardrails
 
-- Enforce stage order: specify -> plan -> tasks -> implement -> verify
+- Enforce stage order: init -> specify -> plan -> tasks -> implement -> verify
 - Work only within approved stage outputs for the current step
-- Keep traceability across spec.md, plan.md, and tasks.md
+- Keep traceability across intake.md, spec.md, plan.md, and tasks.md
 "
 }
 
@@ -108,6 +110,7 @@ customize_speckit_agent_context() {
   bootstrap_speckit_agent_context
 
   if [[ "$stage_name" == "specify" ]]; then
+	
     return 0
   fi
 
@@ -134,46 +137,83 @@ customize_speckit_agent_context() {
   [[ -n "$speckit_feature_dir" ]] && rm -rf "$speckit_feature_dir"
 }
 
+write_intake_from_issue_env() {
+  local intake_path="$1"
+
+  # Only generate if missing (don’t overwrite manual edits unless you want that behavior)
+  if [[ -f "$intake_path" ]]; then
+    echo "intake.md already exists: $intake_path"
+    return 0
+  fi
+
+  # ISSUE_BODY must be provided by the workflow
+  if [[ -z "${ISSUE_BODY:-}" ]]; then
+    echo "Missing ISSUE_BODY env var; cannot generate intake.md." >&2
+    exit 1
+  fi
+
+  mkdir -p "$(dirname "$intake_path")"
+
+  {
+    echo "<!-- AUTO-GENERATED from GitHub Issue #${ISSUE_NUMBER:-unknown} -->"
+    echo "<!-- Title: ${ISSUE_TITLE:-} -->"
+    echo "<!-- URL: ${ISSUE_URL:-} -->"
+    echo
+    printf "%s\n" "${ISSUE_BODY}"
+    echo
+  } > "$intake_path"
+
+  echo "Wrote $intake_path"
+}
+
+install_speckit_&_agent
 case "$stage" in
+
+  init)
+	[[ -f "$intake_file" ]] || { echo "Missing prerequisite: $intake_file">&2; exit 1; }
+	create_if_missing "$intake_file" "# Intake: ${feature_slug}
+_TODO_
+"
+	# Install uv and Spec Kit CLI
+    pip install uv
+    uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+	
+	# Install and Authenticate Codex CLI
+    npm i -g @openai/codex
+    if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+      echo "$OPENAI_API_KEY" | codex login --with-api-key
+    else
+      echo "WARNING: OPENAI_API_KEY environment variable not set. Codex CLI will not be authenticated." >&2
+    fi
+	
+	cd "$feature_dir"
+	
+	# Init Speckit with Codex
+	specify init . --ai codex --script sh --here --force --ai-skills
+	
+	# Setup Constitution to Speckit
+	codex exec --full-auto "/speckit.constitution $(cat constitution_file)"
+	;;
   specify)
     create_if_missing "$spec_file" "# Spec: ${feature_slug}
-
-- Declared Execution Type: ${execution_type}
-- Issue: #${issue_number}
-
-## Problem
 _TODO_
-
-## Acceptance Criteria
-- [ ] AC-001 _TODO_
-"
-    ;;
+"   ;;
   plan)
     [[ -f "$spec_file" ]] || { echo "Missing prerequisite: $spec_file" >&2; exit 1; }
     create_if_missing "$plan_file" "# Plan: ${feature_slug}
-
-Derived from: spec.md
-
-## Approach
 _TODO_
-
-## Risks
-- _TODO_
 "
     ;;
   tasks)
     [[ -f "$plan_file" ]] || { echo "Missing prerequisite: $plan_file" >&2; exit 1; }
     create_if_missing "$tasks_file" "# Tasks: ${feature_slug}
-
-Derived from: plan.md
-
-- [ ] TASK-001 _TODO_
+_TODO_
 "
     ;;
   implement)
     [[ -f "$tasks_file" ]] || { echo "Missing prerequisite: $tasks_file" >&2; exit 1; }
     create_if_missing "$implement_marker" "Implement stage placeholder for ${feature_slug}
-Issue: #${issue_number}
+_TODO_
 "
     ##;;
   ##verify)
@@ -186,7 +226,7 @@ Issue: #${issue_number}
   # Verify should at least require the implementation marker (or implement artifacts), not tasks.md
     [[ -f "$implement_marker" ]] || { echo "Missing prerequisite: $implement_marker" >&2; exit 1; }
     create_if_missing "$verify_marker" "Verify stage placeholder for ${feature_slug}
-Issue: #${issue_number}
+_TODO_
 "
   ;;
 esac
