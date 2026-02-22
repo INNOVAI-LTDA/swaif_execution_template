@@ -52,6 +52,7 @@ jobs:
     env:
       PROJECT_NUMBER: 2
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ISSUE_BODY: ${{ github.event.issue.body }}
 
     steps:
       - name: Checkout repository
