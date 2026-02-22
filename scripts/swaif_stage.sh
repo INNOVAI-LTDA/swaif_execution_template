@@ -168,7 +168,7 @@ write_intake_from_issue_env() {
 case "$stage" in
 
   init)
-	[[ -f "$intake_file" ]] || { echo "Missing prerequisite: $intake_file">&2; exit 1; }
+	write_intake_from_issue_env "$intake_file"
 	create_if_missing "$intake_file" "# Intake: ${feature_slug}
 _TODO_
 "
