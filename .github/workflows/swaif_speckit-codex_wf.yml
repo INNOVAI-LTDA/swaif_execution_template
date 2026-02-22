@@ -34,41 +34,41 @@ jobs:
         run: npm i -g @openai/codex
 
       # Optional: Combine templates if needed
-      - name: Combine constitution and spec templates specs/001-swaif-calc
-        run: cat .swaif/engine/templates/swaif-constitution.md specs/001-swaif-calc/spec.md > specs/001-swaif-calc/swaif-combined-spec.md
+      - name: Combine constitution and spec templates
+        run: cat .swaif/engine/templates/swaif-constitution.md $GITHUB_WORKSPACE/specs/001-swaif-calc/spec.md > $GITHUB_WORKSPACE/specs/001-swaif-calc/swaif-combined-spec.md
 
       - name: Specify – Refine requirements from combined templates
-        run: specify-cli /speckit.specify specs/001-swaif-calc/swaif-combined-spec.md --output specs/001-swaif-calc/swaif-spec.specific.md
+        run: specify-cli /speckit.specify $GITHUB_WORKSPACE/specs/001-swaif-calc/swaif-combined-spec.md --output $GITHUB_WORKSPACE/specs/001-swaif-calc/swaif-spec.specific.md
 
       - name: Plan – Create plan from specific spec
-        run: specify-cli /speckit.plan specs/001-swaif-calc/swaif-spec.specific.md --output specs/001-swaif-calc/swaif-plan.md
+        run: specify-cli /speckit.plan $GITHUB_WORKSPACE/specs/001-swaif-calc/swaif-spec.specific.md --output $GITHUB_WORKSPACE/specs/001-swaif-calc/swaif-plan.md
 
       - name: Tasks – Task breakdown from plan
-        run: specify-cli /speckit.tasks specs/001-swaif-calc/swaif-plan.md --output specs/001-swaif-calc/swaif-tasks.md
+        run: specify-cli /speckit.tasks $GITHUB_WORKSPACE/specs/001-swaif-calc/swaif-plan.md --output $GITHUB_WORKSPACE/specs/001-swaif-calc/swaif-tasks.md
 
       - name: Clarify – Clarification round (optional)
-        run: specify-cli /speckit.clarify specs/001-swaif-calc/swaif-tasks.md --output specs/001-swaif-calc/swaif-clarification.md || echo "No clarifications needed"
+        run: specify-cli /speckit.clarify $GITHUB_WORKSPACE/specs/001-swaif-calc/swaif-tasks.md --output $GITHUB_WORKSPACE/specs/001-swaif-calc/swaif-clarification.md || echo "No clarifications needed"
 
       - name: Implement – Generate code from tasks (example with Codex CLI, adjust as needed)
-        run: codex run "/speckit.implement specs/001-swaif-calc/swaif-tasks.md --output-dir specs/001-swaif-calc/"
+        run: codex run "/speckit.implement $GITHUB_WORKSPACE/specs/001-swaif-calc/swaif-tasks.md --output-dir $GITHUB_WORKSPACE/specs/001-swaif-calc/"
 
       - name: Checklist – Validation checklist from tasks
-        run: specify-cli /speckit.checklist specs/001-swaif-calc/swaif-tasks.md --output specs/001-swaif-calc/swaif-checklist.md
+        run: specify-cli /speckit.checklist $GITHUB_WORKSPACE/specs/001-swaif-calc/swaif-tasks.md --output $GITHUB_WORKSPACE/specs/001-swaif-calc/swaif-checklist.md
 
       # If you want to test/lint Python code, you may add steps like:
       - name: Install calculator requirements
         run: |
           if [ -f ./calculator/requirements.txt ]; then
-            pip install -r specs/001-swaif-calc/requirements.txt
+            pip install -r $GITHUB_WORKSPACE/specs/001-swaif-calc/requirements.txt
           fi
 
       - name: Run tests (if generated)
         run: |
           if [ -d ./calculator/tests ]; then
-            python -m unittest discover -s specs/001-swaif-calc/tests
+            python -m unittest discover -s $GITHUB_WORKSPACE/specs/001-swaif-calc/tests
           fi
 
       - name: Lint code (flake8)
         run: |
           pip install flake8
-          flake8 .specs/001-swaif-calc/
+          flake8 $GITHUB_WORKSPACE/specs/001-swaif-calc/
