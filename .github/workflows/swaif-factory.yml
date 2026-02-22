@@ -1,4 +1,4 @@
-name: SWAIF Factory
+name: SWAIF Factory 
 
 on:
   issues:
@@ -36,6 +36,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  
   run-stage:
     if: >-
       github.event_name == 'workflow_dispatch' ||
@@ -50,6 +51,7 @@ jobs:
     timeout-minutes: 15
     env:
       PROJECT_NUMBER: 2
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
     steps:
       - name: Checkout repository
@@ -87,17 +89,6 @@ jobs:
               featureSlug = core.getInput('feature_slug').trim();
               executionType = core.getInput('declared_execution_type').trim();
               issueNumber = '0';
-            
-              console.log(`[DEBUG] stage='${stage}' featureSlug='${featureSlug}' executionType='${executionType}'`);
-            
-              if (!stage) {
-                core.setFailed("Stage input cannot be empty. Please select a value when dispatching the workflow.");
-                return;
-              }
-              if (!allowedStages.has(stage)) {
-                core.setFailed(`Invalid stage '${stage}'. Must be one of: ${[...allowedStages].join(", ")}.`);
-                return;
-              }
             } else {
               const issue = context.payload.issue;
               issueNumber = String(issue.number);
@@ -153,7 +144,7 @@ jobs:
                 return;
               }
             }
-            core.setOutput(`Selected stage: '${stage}'`);
+
             if (!allowedStages.has(stage)) {
               core.setFailed(`Invalid stage '${stage}'. Must be exactly one of: init, specify, plan, tasks, implement, verify.`);
               return;
@@ -193,7 +184,7 @@ jobs:
             const issue = context.payload.issue;
             if (!issue) return;
             const labelsToRemove = [
-              'swaif:specify', 'swaif:plan', 'swaif:tasks',
+              'swaif:init', 'swaif:specify', 'swaif:plan', 'swaif:tasks',
               'swaif:implement', 'swaif:verify', 'swaif:blocked'
             ];
             const currentLabel = context.payload.label?.name || '';
@@ -214,7 +205,7 @@ jobs:
                 }
               }
             }
-
+      
       - name: Run one SWAIF stage
         shell: bash
         run: |
@@ -234,29 +225,13 @@ jobs:
             echo "feature_slug=${{ steps.meta.outputs.feature_slug }}"
             echo "execution_type=${{ steps.meta.outputs.execution_type }}"
             echo
-
-              # Adapted: Use SpecKit CLI for stage control as in speckit-wf.yml
-              if [[ "${{ steps.meta.outputs.stage }}" == "init" ]]; then
-                echo " Installing uv..."
-                pip install uv
-                echo " Installing SpecKit..."
-                uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
-                echo " Testing which CLI to use speckit:"
-                specify version
-              elif [[ "${{ steps.meta.outputs.stage }}" == "specify" ]]; then
-                specify generate --config path/to/constitution.yaml
-              elif [[ "${{ steps.meta.outputs.stage }}" == "plan" ]]; then
-                specify plan --config path/to/constitution.yaml
-              elif [[ "${{ steps.meta.outputs.stage }}" == "tasks" ]]; then
-                specify task --config path/to/constitution.yaml
-              elif [[ "${{ steps.meta.outputs.stage }}" == "implement" ]]; then
-                specify implement --config path/to/constitution.yaml
-              elif [[ "${{ steps.meta.outputs.stage }}" == "verify" ]]; then
-                echo "Verify stage logic here (customize as needed)"
-              else
-                echo "Unknown stage: ${{ steps.meta.outputs.stage }}"
-                exit 1
-              fi
+            export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
+            ./scripts/swaif_stage.sh \
+              "${{ steps.get-title.outputs.title }}" \
+              "${{ steps.meta.outputs.stage }}" \
+              "specs/${{ steps.meta.outputs.feature_slug }}" \
+              "${{ steps.meta.outputs.execution_type }}" \
+              "${{ steps.meta.outputs.issue_number }}"
           } 2>&1 | tee -a "$log_file"
 
       - name: Upload SWAIF stage logs
@@ -280,7 +255,6 @@ jobs:
 
       - name: Push branch to remote
         run: |
-          git checkout -b "swaif/${{ steps.meta.outputs.feature_slug }}"
           git push --force-with-lease origin "swaif/${{ steps.meta.outputs.feature_slug }}"
 
       - name: Create or update PR
@@ -373,7 +347,7 @@ jobs:
               implement: '⚙️', verify: '🔍'
             };
             const nextStage = {
-              specify: 'plan', plan: 'tasks', tasks: 'implement',
+              init: 'specify', specify: 'plan', plan: 'tasks', tasks: 'implement',
               implement: 'verify', verify: null
             };
             const emoji = stageEmoji[stage] || '🚀';
@@ -392,7 +366,7 @@ jobs:
                 '',
                 '<details><summary>Available stage labels</summary>',
                 '',
-                '`swaif:specify` → `swaif:plan` → `swaif:tasks` → `swaif:implement` → `swaif:verify`',
+                '`swaif:init` → `swaif:specify` → `swaif:plan` → `swaif:tasks` → `swaif:implement` → `swaif:verify`',
                 '',
                 '</details>'
               ].join('\n')
@@ -417,7 +391,7 @@ jobs:
 
             // Map stage names to expected project field option names
             const stageOptionMap = {
-              specify: 'Specify', plan: 'Plan', tasks: 'Tasks',
+              init: 'Init', specify: 'Specify', plan: 'Plan', tasks: 'Tasks',
               implement: 'Implement', verify: 'Verify'
             };
             const stageOptionName = stageOptionMap[stage];
@@ -563,26 +537,6 @@ jobs:
             const issue = context.payload.issue;
             const logsUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             if (!issue) return;
-            // Remove the currently applied swaif stage label if present
-            const currentLabel = context.payload.label?.name || '';
-            const stageLabels = [
-              'swaif:init', 'swaif:specify', 'swaif:plan',
-              'swaif:tasks', 'swaif:implement', 'swaif:verify'
-            ];
-            
-            if (currentLabel && stageLabels.includes(currentLabel)) {
-              try {
-                await github.rest.issues.removeLabel({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issue.number,
-                  name: currentLabel
-                });
-              } catch (err) {
-                // Label might already have been removed or not present
-                console.log(`Could not remove label '${currentLabel}': ${err.message}`);
-              }
-            }
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -602,7 +556,7 @@ jobs:
                 '3. 🏷️ Remove the `swaif:blocked` label.',
                 '4. 🔁 Re-apply the intended stage label to retry exactly one step.',
                 '',
-                '> **Available stage labels:** `swaif:specify` → `swaif:plan` → `swaif:tasks` → `swaif:implement` → `swaif:verify`'
+                '> **Available stage labels:** `swaif:init` → `swaif:specify` → `swaif:plan` → `swaif:tasks` → `swaif:implement` → `swaif:verify`'
               ].join('\n')
             });
 
