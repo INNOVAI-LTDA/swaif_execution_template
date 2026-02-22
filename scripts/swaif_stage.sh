@@ -165,8 +165,6 @@ write_intake_from_issue_env() {
 
   echo "Wrote $intake_path"
 }
-
-install_speckit_&_agent
 case "$stage" in
 
   init)
