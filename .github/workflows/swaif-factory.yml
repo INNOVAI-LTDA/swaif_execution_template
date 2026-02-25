@@ -60,6 +60,7 @@ jobs:
           submodules: 'recursive'
       - name: Checkout and update git submodules(Speckit)
         run: |
+          git submodule sync
           git submodule update --init --recursive
           git submodule update --checkout .swaif/engine/speckit
         
