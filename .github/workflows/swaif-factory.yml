@@ -55,11 +55,14 @@ jobs:
       ISSUE_BODY: ${{ github.event.issue.body }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          submodules: recursive
+          submodules: 'recursive'
+      - name: Checkout and update git submodules(Speckit)
+        run: |
+          git submodule update --init --recursive
+          git submodule update --checkout .swaif/engine/speckit
+        
 
       - name: Configure git identity (required for commits)
         run: |
