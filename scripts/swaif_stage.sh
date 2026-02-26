@@ -282,20 +282,20 @@ _TODO_
       fi
       ;;
     specify)
-      create_if_missing "$spec_file" "$(stage_template_with_speckit_block "specify" "Specify")"
+      create_if_missing "$intake_file" "$(stage_template_with_speckit_block "specify" "Specify")"
       ;;
     plan)
-      create_if_missing "$plan_file" "$(stage_template_with_speckit_block "plan" "Plan")"
+      create_if_missing "$spec_file" "$(stage_template_with_speckit_block "plan" "Plan")"
       ;;
     tasks)
-      create_if_missing "$tasks_file" "$(stage_template_with_speckit_block "tasks" "Tasks")"
+      create_if_missing "$plan_file" "$(stage_template_with_speckit_block "tasks" "Tasks")"
       ;;
     implement)
-      create_if_missing "$implement_marker" "$(stage_template_with_speckit_block "implement" "Implement")"
+      create_if_missing "$tasks_file" "$(stage_template_with_speckit_block "implement" "Implement")"
       ;;
     verify)
       [[ -f "$implement_marker" ]] || fail_with "PREREQUISITE" "Missing prerequisite: $implement_marker"
-      create_if_missing "$verify_marker" "$(stage_template_with_speckit_block "verify" "Verify")"
+      create_if_missing "$implement_marker" "$(stage_template_with_speckit_block "verify" "Verify")"
       ;;
   esac
 
