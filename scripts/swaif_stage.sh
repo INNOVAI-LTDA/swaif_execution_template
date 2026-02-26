@@ -96,6 +96,89 @@ create_if_missing() {
   fi
 }
 
+ensure_required_stage_files() {
+  local stage_name="$1"
+  local required_files=()
+
+  case "$stage_name" in
+    specify)
+      required_files=("$intake_file")
+      ;;
+    plan)
+      required_files=("$intake_file" "$spec_file")
+      ;;
+    tasks)
+      required_files=("$intake_file" "$spec_file" "$plan_file")
+      ;;
+    implement|verify)
+      required_files=("$intake_file" "$spec_file" "$plan_file" "$tasks_file")
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+
+  local missing=()
+  local file
+  for file in "${required_files[@]}"; do
+    [[ -f "$file" ]] || missing+=("$file")
+  done
+
+  if (( ${#missing[@]} > 0 )); then
+    echo "Missing prerequisite files for stage '${stage_name}': ${missing[*]}" >&2
+    exit 1
+  fi
+}
+
+speckit_command_for_stage() {
+  local stage_name="$1"
+  local command=""
+
+  case "$stage_name" in
+    specify)
+      command="/speckit.specify ${intake_file}"
+      ;;
+    plan)
+      command="/speckit.plan ${spec_file}"
+      ;;
+    tasks)
+      command="/speckit.tasks ${plan_file}"
+      ;;
+    implement)
+      command="/speckit.implement ${tasks_file}"
+      ;;
+    verify)
+      command="/speckit.checklist ${tasks_file}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+
+  printf '%s\n' "$command"
+}
+
+stage_template_with_speckit_block() {
+  local stage_name="$1"
+  local heading="$2"
+  local command=""
+
+  command="$(speckit_command_for_stage "$stage_name")" || return 1
+
+  cat <<EOF
+# ${heading}: ${feature_slug}
+
+## Speckit command (${stage_name})
+
+\`\`\`bash
+${command}
+\`\`\`
+
+## Notes
+_TODO_
+EOF
+}
+
 bootstrap_speckit_agent_context() {
   if [[ ! -d "$speckit_root" ]]; then
     echo "Speckit submodule not found at $speckit_root" >&2
@@ -198,6 +281,7 @@ write_intake_from_issue_env() {
 
   echo "Wrote $intake_path"
 }
+ensure_required_stage_files "$stage"
 case "$stage" in
 
   init)
@@ -228,26 +312,19 @@ _TODO_
 	)
 	;;
   specify)
-    create_if_missing "$spec_file" "# Spec: ${feature_slug}
-_TODO_
-"   ;;
+    create_if_missing "$spec_file" "$(stage_template_with_speckit_block "specify" "Specify")"
+    ;;
   plan)
     [[ -f "$spec_file" ]] || { echo "Missing prerequisite: $spec_file" >&2; exit 1; }
-    create_if_missing "$plan_file" "# Plan: ${feature_slug}
-_TODO_
-"
+    create_if_missing "$plan_file" "$(stage_template_with_speckit_block "plan" "Plan")"
     ;;
   tasks)
     [[ -f "$plan_file" ]] || { echo "Missing prerequisite: $plan_file" >&2; exit 1; }
-    create_if_missing "$tasks_file" "# Tasks: ${feature_slug}
-_TODO_
-"
+    create_if_missing "$tasks_file" "$(stage_template_with_speckit_block "tasks" "Tasks")"
     ;;
   implement)
     [[ -f "$tasks_file" ]] || { echo "Missing prerequisite: $tasks_file" >&2; exit 1; }
-    create_if_missing "$implement_marker" "Implement stage placeholder for ${feature_slug}
-_TODO_
-"
+    create_if_missing "$implement_marker" "$(stage_template_with_speckit_block "implement" "Implement")"
     ##;;
   ##verify)
     ##[[ -f "$tasks_file" ]] || { echo "Missing prerequisite: $tasks_file" >&2; exit 1; }
@@ -258,9 +335,7 @@ _TODO_
   verify)
   # Verify should at least require the implementation marker (or implement artifacts), not tasks.md
     [[ -f "$implement_marker" ]] || { echo "Missing prerequisite: $implement_marker" >&2; exit 1; }
-    create_if_missing "$verify_marker" "Verify stage placeholder for ${feature_slug}
-_TODO_
-"
+    create_if_missing "$verify_marker" "$(stage_template_with_speckit_block "verify" "Verify")"
   ;;
 esac
 
