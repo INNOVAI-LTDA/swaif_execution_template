@@ -356,12 +356,29 @@ jobs:
               specify: '📋', plan: '🗺️', tasks: '✅',
               implement: '⚙️', verify: '🔍'
             };
+            const stageSpeckitCommand = {
+              specify: '/speckit.specify specs/<feature-slug>/intake.md',
+              plan: '/speckit.plan specs/<feature-slug>/spec.md',
+              tasks: '/speckit.tasks specs/<feature-slug>/plan.md',
+              implement: '/speckit.implement specs/<feature-slug>/tasks.md',
+              verify: '/speckit.checklist specs/<feature-slug>/tasks.md'
+            };
             const nextStage = {
               init: 'specify', specify: 'plan', plan: 'tasks', tasks: 'implement',
               implement: 'verify', verify: null
             };
             const emoji = stageEmoji[stage] || '🚀';
             const next = nextStage[stage];
+            const commandTemplate = stageSpeckitCommand[stage] || null;
+            const commandBlock = commandTemplate
+              ? [
+                  `### Speckit command for \`swaif:${stage}\``,
+                  '',
+                  '```bash',
+                  commandTemplate.replace('<feature-slug>', featureSlug),
+                  '```'
+                ].join('\n')
+              : null;
             const nextLine = next
               ? `➡️ **Next:** Apply \`swaif:${next}\` to continue.`
               : '🎉 **All stages complete!** The feature is ready for final review.';
@@ -372,6 +389,7 @@ jobs:
               body: [
                 `${emoji} **SWAIF stage \`${stage}\` completed successfully** for \`${featureSlug}\`.`,
                 '',
+                ...(commandBlock ? [commandBlock, ''] : []),
                 nextLine,
                 '',
                 '<details><summary>Available stage labels</summary>',
@@ -538,7 +556,7 @@ jobs:
               console.log(`Project board update failed (non-fatal): ${err.message}`);
             }
 
-      - name: On failure add blocked label and guidance
+      - name: On failure set issue label to blocked
         if: failure() && github.event_name == 'issues'
         uses: actions/github-script@v7
         with:
@@ -547,18 +565,40 @@ jobs:
             const issue = context.payload.issue;
             const logsUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             if (!issue) return;
+
+            const stageLabels = [
+              'swaif:init', 'swaif:specify', 'swaif:plan', 'swaif:tasks',
+              'swaif:implement', 'swaif:verify', 'swaif:blocked'
+            ];
+            const existing = issue.labels.map((l) => l.name);
+
+            for (const label of stageLabels) {
+              if (!existing.includes(label)) continue;
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  name: label
+                });
+              } catch (err) {
+                console.log(`Could not remove label '${label}': ${err.message}`);
+              }
+            }
+
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue.number,
               labels: ['swaif:blocked']
             });
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue.number,
               body: [
-                '🚫 **SWAIF stage failed** — issue marked `swaif:blocked`.',
+                '🚫 **SWAIF stage failed** — current stage label removed and issue marked `swaif:blocked`.',
                 '',
                 '**Next steps:**',
                 `1. 🔍 Review the [workflow logs](${logsUrl}) to identify the root cause.`,
