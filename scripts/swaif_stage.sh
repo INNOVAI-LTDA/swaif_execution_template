@@ -1,6 +1,64 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# -------- Debug/Diagnostics helpers --------
+SWAIF_DEBUG_LOG="${SWAIF_DEBUG_LOG:-.swaif/logs/swaif-stage-debug.log}"
+SWAIF_TEST_MODE="${SWAIF_TEST_MODE:-0}"
+SWAIF_TRACE_COMMANDS="${SWAIF_TRACE_COMMANDS:-1}"
+SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
+RAW_ARGS="$*"
+
+mkdir -p "$(dirname "$SWAIF_DEBUG_LOG")" 2>/dev/null || true
+
+ts() { date -u +"%Y-%m-%dT%H:%M:%SZ"; }
+
+log_event() {
+  local level="$1"
+  local category="$2"
+  local message="$3"
+  printf '[%s] [%s] [%s] %s\n' "$(ts)" "$level" "$category" "$message" | tee -a "$SWAIF_DEBUG_LOG" >&2
+}
+
+fail_with() {
+  local category="$1"
+  local message="$2"
+  local code="${3:-1}"
+  log_event "ERROR" "$category" "$message"
+  exit "$code"
+}
+
+on_unhandled_error() {
+  local code="$1"
+  local line="$2"
+  local cmd="$3"
+  log_event "ERROR" "UNHANDLED" "code=${code} line=${line} cmd=${cmd}"
+  exit "$code"
+}
+
+trap 'on_unhandled_error "$?" "$LINENO" "$BASH_COMMAND"' ERR
+
+warn_with() {
+  local category="$1"
+  local message="$2"
+  log_event "WARN" "$category" "$message"
+}
+
+trace_command() {
+  trap - DEBUG
+  local cmd="$BASH_COMMAND"
+  [[ "$cmd" == "log_event "* ]] && { trap 'trace_command' DEBUG; return 0; }
+  [[ "$cmd" == "trace_command"* ]] && { trap 'trace_command' DEBUG; return 0; }
+  [[ "$cmd" == "on_unhandled_error"* ]] && { trap 'trace_command' DEBUG; return 0; }
+  local fn="${FUNCNAME[1]:-MAIN}"
+  log_event "INFO" "COMMAND" "fn=${fn} line=${LINENO} cmd=${cmd}"
+  trap 'trace_command' DEBUG
+}
+
+if [[ "$SWAIF_TRACE_COMMANDS" == "1" ]]; then
+  trap 'trace_command' DEBUG
+fi
+
+# -------- Args/context --------
 issue_title="${1:-}"
 stage="${2:-}"
 feature_dir="${3:-}"
@@ -8,21 +66,16 @@ execution_type="${4:-}"
 issue_number="${5:-}"
 
 if [[ -z "$issue_title" || -z "$stage" || -z "$feature_dir" || -z "$execution_type" || -z "$issue_number" ]]; then
-  echo "Usage: $0 <issue_title> <stage> <feature_dir> <execution_type> <issue_number>" >&2
-  exit 1
+  fail_with "INPUT" "Usage: $0 <issue_title> <stage> <feature_dir> <execution_type> <issue_number>" 2
 fi
 
 case "$stage" in
   init|specify|plan|tasks|implement|verify) ;;
-  *)
-    echo "Invalid stage: $stage" >&2
-    exit 1
-    ;;
+  *) fail_with "INPUT" "Invalid stage: $stage" 2 ;;
 esac
 
 if [[ ! "$feature_dir" =~ ^specs/[a-z0-9][a-z0-9-]*$ ]]; then
-  echo "feature_dir must match specs/<feature-slug> with kebab-case slug" >&2
-  exit 1
+  fail_with "INPUT" "feature_dir must match specs/<feature-slug> with kebab-case slug" 2
 fi
 
 feature_slug="${feature_dir#specs/}"
@@ -43,49 +96,45 @@ agent_file=".github/agents/copilot-instructions.md"
 
 mkdir -p "$feature_dir"
 
-##git fetch origin "$branch" || true
-##if git show-ref --verify --quiet "refs/remotes/origin/${branch}"; then
-##  git checkout -B "$branch" "origin/$branch"
-##else
-##  git checkout -B "$branch"
-##fi
-
-git fetch --prune origin "+refs/heads/main:refs/remotes/origin/main" 2>/dev/null || true
-git fetch --prune origin "+refs/heads/${branch}:refs/remotes/origin/${branch}" 2>/dev/null || true
-if git show-ref --verify --quiet "refs/remotes/origin/${branch}"; then
-  git checkout -B "${branch}" "refs/remotes/origin/${branch}"
-else
-  # Create the branch from latest main when issue branch does not exist yet
-  if git show-ref --verify --quiet "refs/remotes/origin/main"; then
-    git checkout -B "${branch}" "refs/remotes/origin/main"
-  else
-    # Fallback to current checkout if origin/main is unavailable
-    git checkout -B "${branch}"
+sync_branch_state() {
+  log_event "INFO" "FUNCTION" "enter sync_branch_state"
+  if [[ "$SWAIF_TEST_MODE" == "1" ]]; then
+    log_event "INFO" "TEST_MODE" "Skipping git fetch/checkout sync"
+    return 0
   fi
-fi
 
-# Keep feature branch up to date with main when fast-forward is possible.
-if git show-ref --verify --quiet "refs/remotes/origin/main" && git merge-base --is-ancestor HEAD "refs/remotes/origin/main"; then
-  git merge --ff-only "refs/remotes/origin/main"
-else
-  echo "Skipping fast-forward sync with origin/main (not possible without merge/rebase)."
-fi
+  git fetch --prune origin "+refs/heads/main:refs/remotes/origin/main" 2>/dev/null || true
+  git fetch --prune origin "+refs/heads/${branch}:refs/remotes/origin/${branch}" 2>/dev/null || true
 
+  if git show-ref --verify --quiet "refs/remotes/origin/${branch}"; then
+    git checkout -B "${branch}" "refs/remotes/origin/${branch}"
+  else
+    if git show-ref --verify --quiet "refs/remotes/origin/main"; then
+      git checkout -B "${branch}" "refs/remotes/origin/main"
+    else
+      git checkout -B "${branch}"
+    fi
+  fi
 
+  if git show-ref --verify --quiet "refs/remotes/origin/main" && git merge-base --is-ancestor HEAD "refs/remotes/origin/main"; then
+    git merge --ff-only "refs/remotes/origin/main"
+  else
+    log_event "INFO" "GIT_SYNC" "Skipping fast-forward sync with origin/main"
+  fi
+  log_event "INFO" "GIT_CONTEXT" "post-sync branch=$(git rev-parse --abbrev-ref HEAD) commit=$(git rev-parse --short HEAD)"
+}
 
 resolve_constitution_file() {
+  log_event "INFO" "FUNCTION" "enter resolve_constitution_file"
   if [[ -f "$factory_constitution_file" ]]; then
     echo "$factory_constitution_file"
     return 0
   fi
-
   if [[ -f "$feature_constitution_file" ]]; then
     echo "$feature_constitution_file"
     return 0
   fi
-
-  echo "Missing constitution file. Checked: $factory_constitution_file and $feature_constitution_file" >&2
-  exit 1
+  fail_with "PREREQUISITE" "Missing constitution file. Checked: $factory_constitution_file and $feature_constitution_file"
 }
 
 create_if_missing() {
@@ -93,25 +142,79 @@ create_if_missing() {
   local content="$2"
   if [[ ! -f "$target" ]]; then
     printf "%s\n" "$content" > "$target"
+    log_event "INFO" "ARTIFACT" "Created ${target}"
   fi
 }
 
+ensure_required_stage_files() {
+  log_event "INFO" "FUNCTION" "enter ensure_required_stage_files"
+  local stage_name="$1"
+  local required_files=()
+
+  case "$stage_name" in
+    specify) required_files=("$intake_file") ;;
+    plan) required_files=("$intake_file" "$spec_file") ;;
+    tasks) required_files=("$intake_file" "$spec_file" "$plan_file") ;;
+    implement|verify) required_files=("$intake_file" "$spec_file" "$plan_file" "$tasks_file") ;;
+    *) return 0 ;;
+  esac
+
+  local missing=()
+  local file
+  for file in "${required_files[@]}"; do
+    [[ -f "$file" ]] || missing+=("$file")
+  done
+
+  if (( ${#missing[@]} > 0 )); then
+    fail_with "PREREQUISITE" "Missing prerequisite files for stage '${stage_name}': ${missing[*]}"
+  fi
+}
+
+speckit_command_for_stage() {
+  local stage_name="$1"
+  case "$stage_name" in
+    specify) printf '/speckit.specify %s\n' "$intake_file" ;;
+    plan) printf '/speckit.plan %s\n' "$spec_file" ;;
+    tasks) printf '/speckit.tasks %s\n' "$plan_file" ;;
+    implement) printf '/speckit.implement %s\n' "$tasks_file" ;;
+    verify) printf '/speckit.checklist %s\n' "$tasks_file" ;;
+    *) return 1 ;;
+  esac
+}
+
+stage_template_with_speckit_block() {
+  local stage_name="$1"
+  local heading="$2"
+  local command=""
+  command="$(speckit_command_for_stage "$stage_name")" || fail_with "TEMPLATE" "Unable to map Speckit command for stage '${stage_name}'"
+  cat <<TPL
+# ${heading}: ${feature_slug}
+
+## Speckit command (${stage_name})
+
+\`\`\`bash
+${command}
+\`\`\`
+
+## Notes
+_TODO_
+TPL
+}
+
 bootstrap_speckit_agent_context() {
-  if [[ ! -d "$speckit_root" ]]; then
-    echo "Speckit submodule not found at $speckit_root" >&2
-    exit 1
+  log_event "INFO" "FUNCTION" "enter bootstrap_speckit_agent_context"
+  if [[ "$SWAIF_TEST_MODE" == "1" ]]; then
+    log_event "INFO" "TEST_MODE" "Skipping speckit bootstrap"
+    return 0
   fi
 
-  mkdir -p .specify/templates
-  mkdir -p .github/agents
+  [[ -d "$speckit_root" ]] || fail_with "SPECKIT" "Speckit submodule not found at $speckit_root"
+
+  mkdir -p .specify/templates .github/agents
 
   if [[ ! -f .specify/templates/agent-file-template.md ]]; then
-    if [[ -f "$speckit_agent_template" ]]; then
-      cp "$speckit_agent_template" .specify/templates/agent-file-template.md
-    else
-      echo "Missing Speckit agent template: $speckit_agent_template" >&2
-      exit 1
-    fi
+    [[ -f "$speckit_agent_template" ]] || fail_with "SPECKIT" "Missing Speckit agent template: $speckit_agent_template"
+    cp "$speckit_agent_template" .specify/templates/agent-file-template.md
   fi
 
   create_if_missing "$agent_file" "# SWAIF + Spec Kit Agent Context
@@ -133,20 +236,16 @@ This file is managed by SWAIF stage automation and Speckit agent sync.
 }
 
 customize_speckit_agent_context() {
+  log_event "INFO" "FUNCTION" "enter customize_speckit_agent_context"
   local stage_name="$1"
   local speckit_feature="$feature_slug"
   local speckit_feature_dir=""
 
   bootstrap_speckit_agent_context
+  [[ "$stage_name" == "init" || "$stage_name" == "specify" ]] && return 0
+  [[ "$SWAIF_TEST_MODE" == "1" ]] && return 0
 
-  if [[ "$stage_name" == "init" || "$stage_name" == "specify" ]]; then
-    return 0
-  fi
-
-  if [[ ! -f "$speckit_agent_update_script" ]]; then
-    echo "Missing Speckit update script: $speckit_agent_update_script" >&2
-    exit 1
-  fi
+  [[ -f "$speckit_agent_update_script" ]] || fail_with "SPECKIT" "Missing Speckit update script: $speckit_agent_update_script"
 
   if [[ ! "$speckit_feature" =~ ^[0-9]{3}- ]]; then
     speckit_feature="900-${feature_slug}"
@@ -158,35 +257,24 @@ customize_speckit_agent_context() {
   fi
 
   if ! SPECIFY_FEATURE="$speckit_feature" bash "$speckit_agent_update_script" "${SWAIF_AGENT_TYPE:-copilot}"; then
-    if [[ -n "$speckit_feature_dir" ]]; then
-      rm -rf "$speckit_feature_dir"
-    fi
-    echo "Speckit agent context update failed for feature '${speckit_feature}'" >&2
-    exit 1
+    [[ -n "$speckit_feature_dir" ]] && rm -rf "$speckit_feature_dir"
+    fail_with "SPECKIT" "Speckit agent context update failed for feature '${speckit_feature}'"
   fi
 
-  if [[ -n "$speckit_feature_dir" ]]; then
-    rm -rf "$speckit_feature_dir"
-  fi
+  [[ -n "$speckit_feature_dir" ]] && rm -rf "$speckit_feature_dir"
 }
 
 write_intake_from_issue_env() {
+  log_event "INFO" "FUNCTION" "enter write_intake_from_issue_env"
   local intake_path="$1"
-
-  # Only generate if missing (don’t overwrite manual edits unless you want that behavior)
   if [[ -f "$intake_path" ]]; then
-    echo "intake.md already exists: $intake_path"
+    log_event "INFO" "ARTIFACT" "intake.md already exists: $intake_path"
     return 0
   fi
 
-  # ISSUE_BODY must be provided by the workflow
-  if [[ -z "${ISSUE_BODY:-}" ]]; then
-    echo "Missing ISSUE_BODY env var; cannot generate intake.md." >&2
-    exit 1
-  fi
+  [[ -n "${ISSUE_BODY:-}" ]] || fail_with "INPUT" "Missing ISSUE_BODY env var; cannot generate intake.md."
 
   mkdir -p "$(dirname "$intake_path")"
-
   {
     echo "<!-- AUTO-GENERATED from GitHub Issue #${ISSUE_NUMBER:-unknown} -->"
     echo "<!-- Title: ${ISSUE_TITLE:-} -->"
@@ -195,91 +283,86 @@ write_intake_from_issue_env() {
     printf "%s\n" "${ISSUE_BODY}"
     echo
   } > "$intake_path"
-
-  echo "Wrote $intake_path"
+  log_event "INFO" "ARTIFACT" "Wrote $intake_path"
 }
-case "$stage" in
 
-  init)
-	write_intake_from_issue_env "$intake_file"
-	create_if_missing "$intake_file" "# Intake: ${feature_slug}
+run_stage() {
+  log_event "INFO" "FUNCTION" "enter run_stage"
+  ensure_required_stage_files "$stage"
+
+  case "$stage" in
+    init)
+      write_intake_from_issue_env "$intake_file"
+      create_if_missing "$intake_file" "# Intake: ${feature_slug}
 _TODO_
 "
-	# Install uv and Spec Kit CLI
-    pip install uv
-    uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
-	
-	# Install and Authenticate Codex CLI
-    npm i -g @openai/codex
-    if [[ -n "${OPENAI_API_KEY:-}" ]]; then
-      echo "$OPENAI_API_KEY" | codex login --with-api-key
-    else
-      echo "WARNING: OPENAI_API_KEY environment variable not set. Codex CLI will not be authenticated." >&2
-    fi
-	
-	# Init Speckit with Codex and keep repository working directory unchanged.
-	(
-	  cd "$feature_dir"
-	  specify init . --ai codex --script sh --here --force --ai-skills
+      if [[ "$SWAIF_TEST_MODE" != "1" ]]; then
+        pip install uv
+        uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+        npm i -g @openai/codex
+        if [[ -n "${OPENAI_API_KEY:-}" ]]; then
+          echo "$OPENAI_API_KEY" | codex login --with-api-key
+        else
+          log_event "WARN" "AUTH" "OPENAI_API_KEY not set; Codex CLI not authenticated"
+        fi
+        (
+          cd "$feature_dir"
+          specify init . --ai codex --script sh --here --force --ai-skills
+          constitution_source="$(resolve_constitution_file)"
+          codex exec --full-auto "/speckit.constitution $(cat "$constitution_source")"
+        )
+      fi
+      ;;
+    specify)
+      create_if_missing "$spec_file" "$(stage_template_with_speckit_block "specify" "Specify")"
+      ;;
+    plan)
+      create_if_missing "$plan_file" "$(stage_template_with_speckit_block "plan" "Plan")"
+      ;;
+    tasks)
+      create_if_missing "$tasks_file" "$(stage_template_with_speckit_block "tasks" "Tasks")"
+      ;;
+    implement)
+      create_if_missing "$implement_marker" "$(stage_template_with_speckit_block "implement" "Implement")"
+      ;;
+    verify)
+      [[ -f "$implement_marker" ]] || fail_with "PREREQUISITE" "Missing prerequisite: $implement_marker"
+      create_if_missing "$verify_marker" "$(stage_template_with_speckit_block "verify" "Verify")"
+      ;;
+  esac
 
-	  # Setup Constitution to Speckit
-	  constitution_source="$(resolve_constitution_file)"
-	  codex exec --full-auto "/speckit.constitution $(cat "$constitution_source")"
-	)
-	;;
-  specify)
-    create_if_missing "$spec_file" "# Spec: ${feature_slug}
-_TODO_
-"   ;;
-  plan)
-    [[ -f "$spec_file" ]] || { echo "Missing prerequisite: $spec_file" >&2; exit 1; }
-    create_if_missing "$plan_file" "# Plan: ${feature_slug}
-_TODO_
-"
-    ;;
-  tasks)
-    [[ -f "$plan_file" ]] || { echo "Missing prerequisite: $plan_file" >&2; exit 1; }
-    create_if_missing "$tasks_file" "# Tasks: ${feature_slug}
-_TODO_
-"
-    ;;
-  implement)
-    [[ -f "$tasks_file" ]] || { echo "Missing prerequisite: $tasks_file" >&2; exit 1; }
-    create_if_missing "$implement_marker" "Implement stage placeholder for ${feature_slug}
-_TODO_
-"
-    ##;;
-  ##verify)
-    ##[[ -f "$tasks_file" ]] || { echo "Missing prerequisite: $tasks_file" >&2; exit 1; }
-    ##create_if_missing "$verify_marker" "Verify stage placeholder for ${feature_slug}
-##Issue: #${issue_number}
-##"
-    ;;
-  verify)
-  # Verify should at least require the implementation marker (or implement artifacts), not tasks.md
-    [[ -f "$implement_marker" ]] || { echo "Missing prerequisite: $implement_marker" >&2; exit 1; }
-    create_if_missing "$verify_marker" "Verify stage placeholder for ${feature_slug}
-_TODO_
-"
-  ;;
-esac
+  customize_speckit_agent_context "$stage"
+}
 
-customize_speckit_agent_context "$stage"
+finalize_commit() {
+  log_event "INFO" "FUNCTION" "enter finalize_commit"
+  if [[ "$SWAIF_TEST_MODE" == "1" ]]; then
+    log_event "INFO" "TEST_MODE" "Skipping git add/commit finalize"
+    return 0
+  fi
 
-# Check both tracked and untracked changes under feature_dir
-if [[ -z "$(git status --porcelain -- "$feature_dir" .specify/templates "$agent_file")" ]]; then
-  echo "No changes to commit for stage '${stage}'."
-  exit 0
-fi
+  if [[ -z "$(git status --porcelain -- "$feature_dir" .specify/templates "$agent_file")" ]]; then
+    log_event "INFO" "COMMIT" "No changes to commit for stage '${stage}'."
+    exit 0
+  fi
 
-# Ensure git identity exists for non-interactive commits (CI/local).
-# If not set, git commit can fail with: "fatal: empty ident name ... not allowed".
-if ! git config --get user.name >/dev/null; then
-  git config user.name "github-actions[bot]"
-fi
-if ! git config --get user.email >/dev/null; then
-  git config user.email "github-actions[bot]@users.noreply.github.com"
-fi
+  git config --get user.name >/dev/null || git config user.name "github-actions[bot]"
+  git config --get user.email >/dev/null || git config user.email "github-actions[bot]@users.noreply.github.com"
 
-git add "$feature_dir" .specify/templates "$agent_file"
-git commit -m "swaif(${stage}): ${feature_slug} (issue #${issue_number})"
+  git add "$feature_dir" .specify/templates "$agent_file"
+  git commit -m "swaif(${stage}): ${feature_slug} (issue #${issue_number})"
+}
+
+main() {
+  log_event "INFO" "START" "script=${SCRIPT_PATH} cwd=$(pwd) args='${RAW_ARGS}'"
+  log_event "INFO" "START" "stage=${stage} feature=${feature_slug} issue=${issue_number} execution_type=${execution_type}"
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    log_event "INFO" "GIT_CONTEXT" "branch=$(git rev-parse --abbrev-ref HEAD) commit=$(git rev-parse --short HEAD)"
+  fi
+  sync_branch_state
+  run_stage
+  finalize_commit
+  log_event "INFO" "DONE" "stage=${stage} completed"
+}
+
+main "$@"
