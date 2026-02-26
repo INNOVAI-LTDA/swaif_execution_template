@@ -27,8 +27,10 @@ fi
 
 feature_slug="${feature_dir#specs/}"
 branch="swaif/${feature_slug}"
+repo_root="$(git rev-parse --show-toplevel)"
 intake_file="${feature_dir}/intake.md"
-constitution_file="${feature_dir}/constitution.md"
+factory_constitution_file="${repo_root}/.swaif/engine/.specify/memory/swaif-constitution.md"
+feature_constitution_file="${repo_root}/${feature_dir}/.specify/memory/constitution.md"
 spec_file="${feature_dir}/spec.md"
 plan_file="${feature_dir}/plan.md"
 tasks_file="${feature_dir}/tasks.md"
@@ -57,6 +59,21 @@ else
 fi
 
 
+
+resolve_constitution_file() {
+  if [[ -f "$factory_constitution_file" ]]; then
+    echo "$factory_constitution_file"
+    return 0
+  fi
+
+  if [[ -f "$feature_constitution_file" ]]; then
+    echo "$feature_constitution_file"
+    return 0
+  fi
+
+  echo "Missing constitution file. Checked: $factory_constitution_file and $feature_constitution_file" >&2
+  exit 1
+}
 
 create_if_missing() {
   local target="$1"
@@ -109,8 +126,7 @@ customize_speckit_agent_context() {
 
   bootstrap_speckit_agent_context
 
-  if [[ "$stage_name" == "specify" ]]; then
-	
+  if [[ "$stage_name" == "init" || "$stage_name" == "specify" ]]; then
     return 0
   fi
 
@@ -129,12 +145,16 @@ customize_speckit_agent_context() {
   fi
 
   if ! SPECIFY_FEATURE="$speckit_feature" bash "$speckit_agent_update_script" "${SWAIF_AGENT_TYPE:-copilot}"; then
-    [[ -n "$speckit_feature_dir" ]] && rm -rf "$speckit_feature_dir"
+    if [[ -n "$speckit_feature_dir" ]]; then
+      rm -rf "$speckit_feature_dir"
+    fi
     echo "Speckit agent context update failed for feature '${speckit_feature}'" >&2
     exit 1
   fi
 
-  [[ -n "$speckit_feature_dir" ]] && rm -rf "$speckit_feature_dir"
+  if [[ -n "$speckit_feature_dir" ]]; then
+    rm -rf "$speckit_feature_dir"
+  fi
 }
 
 write_intake_from_issue_env() {
@@ -184,13 +204,15 @@ _TODO_
       echo "WARNING: OPENAI_API_KEY environment variable not set. Codex CLI will not be authenticated." >&2
     fi
 	
-	cd "$feature_dir"
-	
-	# Init Speckit with Codex
-	specify init . --ai codex --script sh --here --force --ai-skills
-	
-	# Setup Constitution to Speckit
-	codex exec --full-auto "/speckit.constitution $(cat "$constitution_file")"
+	# Init Speckit with Codex and keep repository working directory unchanged.
+	(
+	  cd "$feature_dir"
+	  specify init . --ai codex --script sh --here --force --ai-skills
+
+	  # Setup Constitution to Speckit
+	  constitution_source="$(resolve_constitution_file)"
+	  codex exec --full-auto "/speckit.constitution $(cat "$constitution_source")"
+	)
 	;;
   specify)
     create_if_missing "$spec_file" "# Spec: ${feature_slug}
