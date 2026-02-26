@@ -1,8 +1,8 @@
 # Implementation Plan: [FEATURE]
 
 **Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
-**Plan ID**: `PLAN-[NNN]`
 **Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
+**Last Updated**: [YYYY-MM-DD] | **Last Synced With Code**: [commit hash or N/A]
 
 **Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/plan-template.md` for the execution workflow.
 
@@ -30,15 +30,25 @@
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+*GATE: Must pass before Phase 0 research. Re-check after Phase -1 design.*
 
-- Traceability: SPEC/PLAN/TASK IDs defined and mapped to code/tests.
-- Stage Gates: Simplicity, Anti-Abstraction, Integration-First, Challenger review.
-- Test-First: Integration tests defined first, unit tests planned after.
-- Integration-First: API contracts and error cases documented before build.
-- Observability: CLI commands, health/ready checks, structured logging planned.
-- Security: Security Considerations checklist completed.
-- Documentation: Docs updates planned with code changes.
+- [ ] Simplicity Gate: Simplest viable design, plain-language explanation.
+- [ ] Anti-Abstraction Gate: 3+ concrete use cases per abstraction.
+- [ ] Integration-First Gate: API contracts and integration tests defined first.
+- [ ] Challenger Review: Adversarial review completed and responses recorded.
+- [ ] Traceability: SPEC/PLAN/TASK IDs mapped for all planned work.
+
+## Security Considerations
+
+*Required by Article VIII. Complete before implementation begins.*
+
+- [ ] Authentication: How is user identity verified?
+- [ ] Authorization: How are permissions checked?
+- [ ] Input Validation: How are inputs sanitized?
+- [ ] Secrets Management: How are credentials stored/accessed?
+- [ ] Encryption: Is data encrypted in transit and at rest?
+- [ ] Audit Logging: Are security events logged?
+- [ ] Error Handling: Do errors leak sensitive information?
 
 ## Project Structure
 
@@ -100,6 +110,13 @@ ios/ or android/
 
 **Structure Decision**: [Document the selected structure and reference the real
 directories captured above]
+
+## Integration-First Plan
+
+- **API Contracts**: [List endpoints or CLI interfaces with examples]
+- **Integration Tests**: [List tests to be written first]
+- **Unit Tests**: [List components and unit test scope]
+- **Implementation Order**: [List vertical slices in order]
 
 ## Complexity Tracking
 

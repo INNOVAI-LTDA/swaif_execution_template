@@ -1,18 +1,24 @@
 # Feature Specification: [FEATURE NAME]
 
 **Feature Branch**: `[###-feature-name]`  
-**Spec ID**: `SPEC-[NNN]`  
 **Created**: [DATE]  
 **Status**: Draft  
-**Input**: User description: "$ARGUMENTS"
+**Input**: User description: "$ARGUMENTS"  
+**Last Updated**: [YYYY-MM-DD] | **Last Synced With Code**: [commit hash or N/A]
 
-## User Scenarios & Testing *(mandatory)*
+## Traceability
+
+- **Spec ID**: SPEC-[NNN]
+- **Related Plan**: PLAN-[NNN]
+- **Related Tasks**: TASKS-[NNN]
+
+## User Scenarios and Testing *(mandatory)*
 
 <!--
   IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
   Each user story/journey must be INDEPENDENTLY TESTABLE - meaning if you implement just ONE of them,
   you should still have a viable MVP (Minimum Viable Product) that delivers value.
-  
+
   Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
   Think of each story as a standalone slice of functionality that can be:
   - Developed independently
@@ -66,6 +72,11 @@
 
 [Add more user stories as needed, each with an assigned priority]
 
+### Acceptance Tests
+
+- Map each user story to at least one acceptance test case.
+- Reference test IDs or filenames when known.
+
 ### Edge Cases
 
 <!--
@@ -101,17 +112,6 @@
 - **[Entity 1]**: [What it represents, key attributes without implementation]
 - **[Entity 2]**: [What it represents, relationships to other entities]
 
-## Traceability *(mandatory)*
-
-<!--
-  ACTION REQUIRED: Provide bidirectional traceability per constitution.
--->
-
-- **Related Plan**: `PLAN-[NNN]` (link to plan.md)
-- **Related Tasks**: `TASKS-[NNN]` (link to tasks.md)
-- **User Story -> Acceptance Tests**: [Map each user story to its acceptance scenarios]
-- **User Story -> Integration Scenarios**: [Map each user story to integration tests]
-
 ## Success Criteria *(mandatory)*
 
 <!--
@@ -125,3 +125,15 @@
 - **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+
+## Constitutional Compliance
+
+- [ ] Article I: Traceability links present (SPEC -> PLAN -> TASK -> Code)
+- [ ] Article II: Stage gates satisfied (Phase -1 gates for plans)
+- [ ] Article III: Acceptance tests defined per user story
+- [ ] Article IV: Challenger review requested for plan
+- [ ] Article V: Simplicity and anti-abstraction rationale captured
+- [ ] Article VI: Integration tests planned first
+- [ ] Article VII: CLI interface and health endpoints considered
+- [ ] Article VIII: Security considerations included in plan
+- [ ] Article IX: Documentation update metadata added
