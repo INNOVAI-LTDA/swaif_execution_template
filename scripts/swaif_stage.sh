@@ -4,6 +4,9 @@ set -euo pipefail
 # -------- Debug/Diagnostics helpers --------
 SWAIF_DEBUG_LOG="${SWAIF_DEBUG_LOG:-.swaif/logs/swaif-stage-debug.log}"
 SWAIF_TEST_MODE="${SWAIF_TEST_MODE:-0}"
+SWAIF_TRACE_COMMANDS="${SWAIF_TRACE_COMMANDS:-1}"
+SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
+RAW_ARGS="$*"
 
 mkdir -p "$(dirname "$SWAIF_DEBUG_LOG")" 2>/dev/null || true
 
@@ -33,6 +36,27 @@ on_unhandled_error() {
 }
 
 trap 'on_unhandled_error "$?" "$LINENO" "$BASH_COMMAND"' ERR
+
+warn_with() {
+  local category="$1"
+  local message="$2"
+  log_event "WARN" "$category" "$message"
+}
+
+trace_command() {
+  trap - DEBUG
+  local cmd="$BASH_COMMAND"
+  [[ "$cmd" == "log_event "* ]] && { trap 'trace_command' DEBUG; return 0; }
+  [[ "$cmd" == "trace_command"* ]] && { trap 'trace_command' DEBUG; return 0; }
+  [[ "$cmd" == "on_unhandled_error"* ]] && { trap 'trace_command' DEBUG; return 0; }
+  local fn="${FUNCNAME[1]:-MAIN}"
+  log_event "INFO" "COMMAND" "fn=${fn} line=${LINENO} cmd=${cmd}"
+  trap 'trace_command' DEBUG
+}
+
+if [[ "$SWAIF_TRACE_COMMANDS" == "1" ]]; then
+  trap 'trace_command' DEBUG
+fi
 
 # -------- Args/context --------
 issue_title="${1:-}"
@@ -73,6 +97,7 @@ agent_file=".github/agents/copilot-instructions.md"
 mkdir -p "$feature_dir"
 
 sync_branch_state() {
+  log_event "INFO" "FUNCTION" "enter sync_branch_state"
   if [[ "$SWAIF_TEST_MODE" == "1" ]]; then
     log_event "INFO" "TEST_MODE" "Skipping git fetch/checkout sync"
     return 0
@@ -96,9 +121,11 @@ sync_branch_state() {
   else
     log_event "INFO" "GIT_SYNC" "Skipping fast-forward sync with origin/main"
   fi
+  log_event "INFO" "GIT_CONTEXT" "post-sync branch=$(git rev-parse --abbrev-ref HEAD) commit=$(git rev-parse --short HEAD)"
 }
 
 resolve_constitution_file() {
+  log_event "INFO" "FUNCTION" "enter resolve_constitution_file"
   if [[ -f "$factory_constitution_file" ]]; then
     echo "$factory_constitution_file"
     return 0
@@ -120,6 +147,7 @@ create_if_missing() {
 }
 
 ensure_required_stage_files() {
+  log_event "INFO" "FUNCTION" "enter ensure_required_stage_files"
   local stage_name="$1"
   local required_files=()
 
@@ -174,6 +202,7 @@ TPL
 }
 
 bootstrap_speckit_agent_context() {
+  log_event "INFO" "FUNCTION" "enter bootstrap_speckit_agent_context"
   if [[ "$SWAIF_TEST_MODE" == "1" ]]; then
     log_event "INFO" "TEST_MODE" "Skipping speckit bootstrap"
     return 0
@@ -207,6 +236,7 @@ This file is managed by SWAIF stage automation and Speckit agent sync.
 }
 
 customize_speckit_agent_context() {
+  log_event "INFO" "FUNCTION" "enter customize_speckit_agent_context"
   local stage_name="$1"
   local speckit_feature="$feature_slug"
   local speckit_feature_dir=""
@@ -235,6 +265,7 @@ customize_speckit_agent_context() {
 }
 
 write_intake_from_issue_env() {
+  log_event "INFO" "FUNCTION" "enter write_intake_from_issue_env"
   local intake_path="$1"
   if [[ -f "$intake_path" ]]; then
     log_event "INFO" "ARTIFACT" "intake.md already exists: $intake_path"
@@ -256,6 +287,7 @@ write_intake_from_issue_env() {
 }
 
 run_stage() {
+  log_event "INFO" "FUNCTION" "enter run_stage"
   ensure_required_stage_files "$stage"
 
   case "$stage" in
@@ -303,6 +335,7 @@ _TODO_
 }
 
 finalize_commit() {
+  log_event "INFO" "FUNCTION" "enter finalize_commit"
   if [[ "$SWAIF_TEST_MODE" == "1" ]]; then
     log_event "INFO" "TEST_MODE" "Skipping git add/commit finalize"
     return 0
@@ -321,7 +354,11 @@ finalize_commit() {
 }
 
 main() {
-  log_event "INFO" "START" "stage=${stage} feature=${feature_slug} issue=${issue_number}"
+  log_event "INFO" "START" "script=${SCRIPT_PATH} cwd=$(pwd) args='${RAW_ARGS}'"
+  log_event "INFO" "START" "stage=${stage} feature=${feature_slug} issue=${issue_number} execution_type=${execution_type}"
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    log_event "INFO" "GIT_CONTEXT" "branch=$(git rev-parse --abbrev-ref HEAD) commit=$(git rev-parse --short HEAD)"
+  fi
   sync_branch_state
   run_stage
   finalize_commit

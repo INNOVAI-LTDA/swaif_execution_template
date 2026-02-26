@@ -224,25 +224,43 @@ jobs:
           mkdir -p "$log_dir"
           log_file="${log_dir}/swaif-stage-${{ steps.meta.outputs.stage }}-issue-${{ steps.meta.outputs.issue_number }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}.log"
 
+          stage_script="./scripts/swaif_stage.sh"
+          stage_args=(
+            "${{ github.event.issue.title }}"
+            "${{ steps.meta.outputs.stage }}"
+            "specs/${{ steps.meta.outputs.feature_slug }}"
+            "${{ steps.meta.outputs.execution_type }}"
+            "${{ steps.meta.outputs.issue_number }}"
+          )
+
           {
             echo "=== SWAIF Stage Execution Log ==="
             echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo "repo=${{ github.repository }}"
             echo "run_id=${{ github.run_id }}"
             echo "run_attempt=${{ github.run_attempt }}"
+            echo "workflow=${{ github.workflow }}"
+            echo "event_name=${{ github.event_name }}"
+            echo "actor=${{ github.actor }}"
+            echo "ref=${{ github.ref }}"
+            echo "sha=${{ github.sha }}"
             echo "issue_number=${{ steps.meta.outputs.issue_number }}"
             echo "stage=${{ steps.meta.outputs.stage }}"
             echo "feature_slug=${{ steps.meta.outputs.feature_slug }}"
             echo "execution_type=${{ steps.meta.outputs.execution_type }}"
+            echo "current_branch=$(git rev-parse --abbrev-ref HEAD)"
+            echo "current_commit=$(git rev-parse --short HEAD)"
+            echo "script_path=${stage_script}"
+            printf 'script_args=%q %q %q %q %q\n' "${stage_args[@]}"
+            echo "SWAIF_DEBUG_LOG=${log_file}"
+            echo "SWAIF_TRACE_COMMANDS=1"
             echo
             export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
-            ./scripts/swaif_stage.sh \
-              "${{ github.event.issue.title }}" \
-              "${{ steps.meta.outputs.stage }}" \
-              "specs/${{ steps.meta.outputs.feature_slug }}" \
-              "${{ steps.meta.outputs.execution_type }}" \
-              "${{ steps.meta.outputs.issue_number }}"
+            export SWAIF_DEBUG_LOG="$log_file"
+            export SWAIF_TRACE_COMMANDS=1
+            "$stage_script" "${stage_args[@]}"
           } 2>&1 | tee -a "$log_file"
+
 
       - name: Upload SWAIF stage logs
         if: always()
