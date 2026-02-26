@@ -50,12 +50,25 @@ mkdir -p "$feature_dir"
 ##  git checkout -B "$branch"
 ##fi
 
+git fetch --prune origin "+refs/heads/main:refs/remotes/origin/main" 2>/dev/null || true
 git fetch --prune origin "+refs/heads/${branch}:refs/remotes/origin/${branch}" 2>/dev/null || true
 if git show-ref --verify --quiet "refs/remotes/origin/${branch}"; then
   git checkout -B "${branch}" "refs/remotes/origin/${branch}"
 else
-  # Create the branch off the currently checked out commit (workflow checkout)
-  git checkout -B "${branch}"
+  # Create the branch from latest main when issue branch does not exist yet
+  if git show-ref --verify --quiet "refs/remotes/origin/main"; then
+    git checkout -B "${branch}" "refs/remotes/origin/main"
+  else
+    # Fallback to current checkout if origin/main is unavailable
+    git checkout -B "${branch}"
+  fi
+fi
+
+# Keep feature branch up to date with main when fast-forward is possible.
+if git show-ref --verify --quiet "refs/remotes/origin/main" && git merge-base --is-ancestor HEAD "refs/remotes/origin/main"; then
+  git merge --ff-only "refs/remotes/origin/main"
+else
+  echo "Skipping fast-forward sync with origin/main (not possible without merge/rebase)."
 fi
 
 
