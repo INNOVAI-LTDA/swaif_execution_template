@@ -58,11 +58,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-      - name: Checkout and update git submodules(Speckit)
-        run: |
-          git submodule sync
-          git submodule update --init --recursive
-          git submodule update --checkout .swaif/engine/speckit
         
 
       - name: Configure git identity (required for commits)
@@ -333,7 +328,15 @@ jobs:
               });
               console.log(`Created PR from ${headBranch} -> ${base}`);
             }
-
+            
+      - name: Add speckit as a submodule (if missing)
+        run: |
+          git submodule add https://github.com/github/spec-kit.git .swaif/engine/speckit || echo "Submodule already exists"
+          git submodule update --init --recursive
+          git add .swaif/engine/speckit .gitmodules
+          git commit -m "ci: add speckit submodule automatically [skip ci]" || echo "Nothing to commit"
+          git push
+          
       - name: Post success comment
         if: github.event_name == 'issues'
         uses: actions/github-script@v7
